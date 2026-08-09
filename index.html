@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>酷果星创 · 3PP训练营作战台</title>
+<style>
+  /* ═══════════════  Design Tokens — Liquid Glass ═══════════════ */
+  :root{
+    --blue:#e53f45; --blue-d:#c92f36; --blue-l:#fdeced; --blue-l2:#ff9ca4;
+    --ink:#4f5969; --sub:#8791a3; --line:rgba(148,163,184,.25);
+    --red:#dc2626; --red-bg:#fef2f2; --green:#16a34a; --amber:#d97706; --amber-bg:#fffbeb;
+    --gold:#f59e0b; --silver:#94a3b8; --bronze:#b45309;
+    /* Glass tokens — lower alpha so the colored backdrop shows through = real translucency */
+    --glass-bg:rgba(255,255,255,.62);
+    --glass-border:rgba(255,255,255,.68);
+    --glass-shadow:0 4px 24px -4px rgba(15,23,42,.10),0 1px 3px rgba(15,23,42,.05);
+    --glass-shadow-lg:0 14px 44px -10px rgba(190,30,60,.20),0 4px 12px -4px rgba(15,23,42,.08);
+    --glass-blur:blur(22px); -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:linear-gradient(165deg,#fdeef0 0%,#fbf2f4 38%,#fff 100%); color:var(--ink); font-size:15px;
+    padding-bottom:env(safe-area-inset-bottom); min-height:100vh;}
+
+  /* ── Colorful backdrop blobs — drive the visible "liquid glass" transparency ── */
+  .bg-blobs{position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none;}
+  .bg-blobs::before,.bg-blobs::after,.bg-blobs i{content:""; position:absolute; border-radius:50%; filter:blur(75px);}
+  .bg-blobs::before{width:48vw; height:48vw; left:-9vw; top:-7vw; opacity:.55; background:radial-gradient(circle at 32% 32%,#ff8a9b,#ff5e7a);}
+  .bg-blobs::after{width:52vw; height:52vw; right:-12vw; top:26vh; opacity:.5; background:radial-gradient(circle at 62% 40%,#ffb88c,#ff7e9d);}
+  .bg-blobs i{width:44vw; height:44vw; left:28vw; bottom:-14vw; opacity:.5; background:radial-gradient(circle at 50% 50%,#ffd6a0,#ff9aa2);}
+
+  /* ── Top bar — glass strip ── */
+  .topbar{position:sticky; top:0; z-index:30; background:var(--glass-bg);
+    border-bottom:1px solid var(--line); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+    display:flex; align-items:center; gap:10px; padding:11px 16px;}
+  .topbar h1{font-size:16px; margin:0; font-weight:700; line-height:1.2; letter-spacing:-.2px;}
+  .topbar .ev{font-size:11px; color:var(--sub); margin-top:1px;}
+  .topbar .spacer{flex:1;}
+  .iconbtn{width:42px; height:42px; border:none; background:var(--glass-bg); border:1px solid var(--glass-border);
+    color:var(--blue); border-radius:14px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+    box-shadow:var(--glass-shadow); transition:transform .15s ease, box-shadow .15s ease;}
+  .iconbtn:active{transform:scale(.95); box-shadow:var(--glass-shadow);}
+
+  /* ── Layout ── */
+  .wrap{max-width:880px; margin:0 auto; padding:14px 14px 90px;}
+
+  /* ═══ Banner — Liquid Glass Hero ═══ */
+  .banner{background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:24px;
+    padding:26px 24px 24px; margin-bottom:20px; position:relative; overflow:hidden;
+    box-shadow:var(--glass-shadow-lg); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);}
+  .banner::before{content:""; position:absolute; left:0; right:0; top:0; height:46%;
+    background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0)); pointer-events:none; border-radius:24px 24px 0 0;}
+  .banner .sync{position:relative; margin-top:12px; font-size:12.5px; line-height:1.4; color:var(--ink); opacity:.72;
+    display:flex; align-items:center; gap:7px; letter-spacing:.2px;}
+  .banner .sync .dot{width:6px; height:6px; border-radius:50%; background:var(--blue); flex:none;}
+  .banner .sync b{font-weight:700; opacity:1;}
+  .banner .sync.empty{opacity:.5; font-style:italic;}
+  .banner .sync-row{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;}
+  .banner .sync.mode{opacity:.62; font-size:11.5px;}
+  .banner .sync .dot.off{background:#94a3b8;}
+  .banner .t{font-size:15px; font-weight:700; letter-spacing:.3px; color:var(--ink); opacity:.85; margin-bottom:20px;
+    display:flex; align-items:center; gap:10px;}
+  .banner .t::before{content:""; width:5px; height:18px; border-radius:4px;
+    background:linear-gradient(180deg,var(--blue),var(--blue-l2)); display:inline-block; flex-shrink:0;}
+  .banner .row{display:flex; flex-wrap:wrap; gap:12px;}
+  .banner .stat{flex:1 1 0; min-width:90px; background:var(--glass-bg); border:1px solid var(--glass-border);
+    border-radius:18px; padding:18px 14px; display:flex; flex-direction:column; gap:6px;
+    box-shadow:var(--glass-shadow); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+    transition:transform .2s ease, box-shadow .2s ease; overflow:hidden;}
+  .banner .stat:hover{transform:translateY(-3px); box-shadow:var(--glass-shadow-lg);}
+  .banner .stat b{font-size:26px; font-weight:800; line-height:1.05; letter-spacing:-.4px; color:var(--ink);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;}
+  .banner .stat span{font-size:12px; color:var(--sub); line-height:1.4; font-weight:500;}
+  .banner .stat-ct{flex:0 0 auto; min-width:48px; padding-left:10px; padding-right:10px;}
+  .banner .stat-sales{flex:2 1 0; min-width:96px;}
+
+  /* ═══ Cards — Universal Glass ═══ */
+  .card{background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:20px;
+    padding:20px; margin-bottom:16px; box-shadow:var(--glass-shadow); position:relative; overflow:hidden;
+    backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur); transition:box-shadow .2s ease;}
+  .card::before{content:""; position:absolute; left:0; right:0; top:0; height:42%;
+    background:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,0)); pointer-events:none; border-radius:20px 20px 0 0;}
+  .card:hover{box-shadow:var(--glass-shadow-lg);}
+  .card h3{margin:0 0 14px; font-size:14px; display:flex; align-items:center; gap:8px; color:var(--ink); font-weight:700;}
+  .hint{font-size:12px; color:var(--sub); line-height:1.75;}
+  .card h3 svg{flex:none;}
+
+  /* ── Stats grid (inside cards) ── */
+  .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(96px,1fr)); gap:12px;}
+  .stats .stat{background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:14px;
+    padding:14px 10px; text-align:center; box-shadow:var(--glass-shadow);
+    backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);}
+  .stat .v{font-size:20px; font-weight:800; color:var(--blue-d);}
+  .stat .k{font-size:11px; color:var(--sub); margin-top:3px; font-weight:500;}
+
+  /* ── Tab bar — floating glass pill ── */
+  .tabs{position:fixed; left:12px; right:12px; bottom:12px; z-index:40; display:flex;
+    background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:22px;
+    padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+    box-shadow:var(--glass-shadow-lg); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+    max-width:856px; margin:0 auto;}
+  .tab{flex:1; border:none; background:none; padding:9px 4px; display:flex; flex-direction:column; align-items:center; gap:3px;
+    color:var(--sub); font-size:11px; cursor:pointer; border-radius:14px; transition:background .15s ease, color .15s ease;}
+  .tab svg{width:22px; height:22px; transition:stroke .15s ease;}
+  .tab.active{background:rgba(229,63,69,.11); color:var(--blue); font-weight:700;}
+  .tab.active svg{stroke:var(--blue);}
+  .panel{display:none;} .panel.active{display:block;}
+
+  /* ── Segmented control ── */
+  .seg{display:inline-flex; background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:12px;
+    padding:4px; margin-bottom:16px; backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);}
+  .seg button{border:none; background:none; padding:7px 16px; border-radius:10px; font-size:13px; color:var(--sub); cursor:pointer; font-weight:600;}
+  .seg button.on{background:var(--blue); color:#fff; box-shadow:0 4px 12px rgba(201,47,54,.24);}
+
+  /* ── Table ── */
+  table{width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed;}
+  th,td{padding:10px 8px; text-align:right; border-bottom:1px solid var(--line);}
+  th:first-child,td:first-child{text-align:left;} th:nth-child(2),td:nth-child(2){text-align:left;}
+  th{color:var(--sub); font-weight:600; font-size:11px; position:sticky; top:0;
+    background:var(--glass-bg); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);}
+  tbody tr:active{background:rgba(229,63,69,.05);}
+  .rank{font-weight:800; color:var(--sub); width:30px;}
+  .nm{font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;} .st{color:var(--sub); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .medal{display:inline-flex; width:24px; height:24px; border-radius:50%; align-items:center; justify-content:center; font-size:12px; color:#fff; font-weight:800;
+    box-shadow:0 2px 6px rgba(0,0,0,.15);}
+  .m1{background:linear-gradient(135deg,#fbbf24,#f59e0b);} .m2{background:linear-gradient(135deg,#cbd5e1,#94a3b8);} .m3{background:linear-gradient(135deg,#d97706,#b45309);}
+  .ok-badge{background:linear-gradient(135deg,#22c55e,#16a34a); color:#fff; font-size:10px; padding:2px 7px; border-radius:7px; margin-left:5px; font-weight:700;
+    box-shadow:0 1px 4px rgba(22,163,74,.25);}
+  .pill{display:inline-block; font-size:10px; padding:3px 8px; border-radius:8px; font-weight:700;}
+  .pill.nake{background:var(--amber-bg); color:var(--amber); border:1px solid #fde68a;}
+  .pill.video{background:var(--red-bg); color:var(--red); border:1px solid #fecaca;}
+  .today{background:linear-gradient(135deg,rgba(253,230,138,.6),rgba(254,243,199,.5)); border:1px solid #fde68a;
+    border-radius:14px; padding:13px 16px; margin-bottom:14px; font-size:13px;
+    display:flex; align-items:center; gap:8px; color:#92400e; font-weight:500;}
+
+  /* ── Form elements ── */
+  .search-box{position:relative;}
+  .input{width:100%; padding:13px 16px; border:1px solid var(--line); border-radius:14px; font-size:16px;
+    background:var(--glass-bg); color:var(--ink); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+    transition:border-color .15s ease, box-shadow .15s ease;}
+  .input:focus{outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(229,63,69,.12);}
+  .search-results{position:absolute; left:0; right:0; top:52px; background:var(--glass-bg); border:1px solid var(--glass-border);
+    border-radius:16px; box-shadow:var(--glass-shadow-lg); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+    max-height:260px; overflow:auto; z-index:20; display:none;}
+  .search-results.show{display:block;}
+  .search-results div{padding:12px 14px; border-bottom:1px solid var(--line); cursor:pointer; font-size:14px;}
+  .search-results div:active{background:rgba(229,63,69,.06);}
+  .selbox{background:var(--blue-l); border:1px solid var(--glass-border); border-radius:14px; padding:12px 14px; margin:10px 0; font-size:13px;}
+  .selbox b{font-size:15px;}
+  .quick{display:flex; flex-wrap:wrap; gap:10px; margin:12px 0;}
+  .qbtn{flex:1; min-width:96px; border:1px solid var(--line); background:var(--glass-bg); border-radius:14px; padding:14px 10px; cursor:pointer;
+    text-align:center; font-size:13px; font-weight:700; color:var(--ink);
+    box-shadow:var(--glass-shadow); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+    transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;}
+  .qbtn .s{display:block; font-size:11px; color:var(--sub); font-weight:500; margin-top:3px;}
+  .qbtn:active{transform:scale(.97);}
+  .qbtn.on{background:linear-gradient(135deg,var(--blue),#f06d73); color:#fff; border-color:transparent; box-shadow:0 4px 14px rgba(201,47,54,.25);}
+  .qbtn.on .s{color:rgba(255,255,255,.8);}
+  .row-flex{display:flex; gap:12px; align-items:center; flex-wrap:wrap;}
+  .check{display:inline-flex; align-items:center; gap:6px; font-size:13px; background:var(--glass-bg); border:1px solid var(--glass-border);
+    border-radius:12px; padding:10px 14px; cursor:pointer; backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+    transition:background .15s ease, border-color .15s ease;}
+  .check.on{background:rgba(229,63,69,.08); border-color:var(--blue); color:var(--blue); font-weight:700;}
+  textarea{width:100%; min-height:120px; border:1px solid var(--line); border-radius:14px; padding:12px; font-size:14px; resize:vertical;
+    background:var(--glass-bg); color:var(--ink); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);}
+
+  /* ── Buttons ── */
+  .btn{border:none; border-radius:14px; padding:13px 18px; font-size:15px; font-weight:700; cursor:pointer;
+    transition:transform .15s ease, box-shadow .15s ease;}
+  .btn:active{transform:scale(.97);}
+  .btn.primary{background:linear-gradient(135deg,var(--blue),#f06d73); color:#fff; box-shadow:0 4px 14px rgba(201,47,54,.25);}
+  .btn.primary:active{box-shadow:0 2px 6px rgba(201,47,54,.22);}
+  .btn.ghost{background:var(--glass-bg); color:var(--blue); border:1px solid var(--glass-border);
+    box-shadow:var(--glass-shadow); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);}
+  .btn.block{width:100%;}
+  .btn.red{background:linear-gradient(135deg,#ef4444,#dc2626); color:#fff; box-shadow:0 4px 14px rgba(220,38,38,.3);}
+  .drop{border:2px dashed rgba(229,63,69,.38); border-radius:16px; padding:20px; text-align:center; color:var(--blue); cursor:pointer;
+    background:rgba(229,63,69,.04); transition:background .15s ease, border-color .15s ease;}
+  .drop:hover{background:rgba(229,63,69,.07); border-color:var(--blue);}
+
+  /* ── Modal ── */
+  .modal{position:fixed; inset:0; background:rgba(15,23,42,.25); z-index:60; display:none; align-items:flex-end; justify-content:center;
+    backdrop-filter:blur(6px) saturate(1.2); -webkit-backdrop-filter:blur(6px) saturate(1.2);}
+  .modal.show{display:flex;}
+  .modal .box{background:var(--glass-bg); width:100%; max-width:560px; border:1px solid var(--glass-border);
+    border-radius:24px 24px 0 0; padding:20px 18px calc(20px + env(safe-area-inset-bottom)); max-height:90vh; overflow:auto;
+    box-shadow:0 -8px 40px rgba(15,23,42,.12); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);}
+  .modal .box h3{margin:0 0 14px; font-size:16px; display:flex; align-items:center; gap:8px;}
+  .modal .close{margin-left:auto; border:none; background:rgba(15,23,42,.06); width:36px; height:36px; border-radius:12px;
+    font-size:18px; cursor:pointer; color:var(--sub); transition:background .15s ease;}
+  .modal .close:active{background:rgba(15,23,42,.1);}
+
+  /* ── Toast ── */
+  .toast{position:fixed; left:50%; top:18%; transform:translateX(-50%);
+    background:rgba(15,23,42,.78); color:#fff; backdrop-filter:blur(16px) saturate(1.3); -webkit-backdrop-filter:blur(16px) saturate(1.3);
+    padding:12px 20px; border-radius:14px; font-size:14px; z-index:99; opacity:0; transition:.25s; pointer-events:none;
+    max-width:88%; text-align:center; border:1px solid rgba(255,255,255,.12); box-shadow:0 8px 30px rgba(0,0,0,.2);}
+  .toast.show{opacity:1;}
+  .toast.ok{background:rgba(22,163,74,.88); border-color:rgba(34,197,94,.3);}
+  .toast.err{background:rgba(220,38,38,.88); border-color:rgba(248,113,113,.3);}
+
+  /* ── Naked list & misc ── */
+  .naked-list .item{display:flex; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid var(--line);}
+  .naked-list .item .info{flex:1;}
+  .naked-list .item .info b{font-size:14px;}
+  .naked-list .item .info span{font-size:12px; color:var(--sub); display:block;}
+  .reviewed{color:var(--green); font-weight:700; font-size:13px;}
+  .mini{font-size:12px; color:var(--sub);}
+  .audnum{display:inline-block; min-width:28px; padding:5px 10px; background:rgba(229,63,69,.08); color:var(--blue-d); border-radius:10px; font-weight:800; border:1px solid rgba(229,63,69,.16);}
+
+  /* ── Card-style Rank List（先锋PK / 专项提升 通用） ── */
+  .rank-list{display:flex; flex-direction:column; gap:12px; margin-top:4px;}
+  .rank-card{background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:18px;
+    padding:16px 18px; display:flex; align-items:flex-start; gap:14px;
+    box-shadow:var(--glass-shadow); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+    transition:transform .15s ease, box-shadow .15s ease; position:relative; overflow:hidden;}
+  .rank-card::before{content:""; position:absolute; left:0; top:0; bottom:0; width:4px;
+    background:linear-gradient(180deg,rgba(255,156,164,.72),rgba(229,63,69,.58)); border-radius:18px 0 0 18px;}
+  .rank-card.rank-top3::before{background:linear-gradient(180deg,rgba(229,63,69,.88),rgba(201,47,54,.72));}
+  .rank-card:hover{transform:translateY(-2px); box-shadow:var(--glass-shadow-lg);}
+  /* 左侧：还原上一版金银铜名次色 */
+  .rk-badge{flex:none; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:15px; font-weight:800; color:#fff; flex-shrink:0; margin-top:2px;
+    box-shadow:0 3px 10px rgba(88,72,68,.14);}
+  .rk-gold{background:linear-gradient(135deg,#ffd98f,#f3b95f); color:#fff;}
+  .rk-silver{background:linear-gradient(135deg,#e7edf5,#c6d0dd); color:#fff;}
+  .rk-bronze{background:linear-gradient(135deg,#efb27f,#d98a58); color:#fff;}
+  .rk-norm{background:transparent; color:#929cad; box-shadow:none;}
+  /* 中间：姓名 + 门店 + 进度条 */
+  .rk-body{flex:1; min-width:0; display:flex; flex-direction:column; gap:5px;}
+  .rk-name{font-size:17px; font-weight:800; line-height:1.25; color:var(--ink);}
+  .rk-store{font-size:12.5px; color:var(--sub); line-height:1.3; font-weight:500;}
+  .rk-bar-row{display:flex; align-items:center; gap:10px;}
+  .rk-bar{flex:1; height:10px; background:rgba(229,63,69,.09); border-radius:5px; overflow:hidden; min-width:60px;}
+  .rk-bar-fill{height:100%; border-radius:5px; transition:width .4s ease;}
+  .rk-bar-fill.red{background:linear-gradient(90deg,#ffd0d4,#ef7379);}
+  .rk-bar-fill.red-done{background:linear-gradient(90deg,#ef7379,#d9363e);}
+  .rk-pct{font-size:13px; font-weight:800; color:var(--blue-d); white-space:nowrap; min-width:52px; text-align:right;}
+  .rk-checks{font-size:11px; color:var(--sub); white-space:nowrap;}
+  /* 右侧：销售数据 */
+  .rk-stats{flex:none; display:flex; gap:8px; align-items:flex-start; flex-shrink:0;}
+  .rk-stat{text-align:center; min-width:54px;}
+  .rk-stat .val{font-size:16px; font-weight:800; line-height:1.2;}
+  .rk-stat .lbl{font-size:10px; color:var(--sub); margin-top:1px; white-space:nowrap; font-weight:500;}
+  .rk-val-score{color:#566071;} .rk-val-sales{color:#697486;} .rk-val-host{color:#7e899a;} .rk-val-audio{color:#98a2b2;}
+
+  /* ── 登录保护 ── */
+  .auth-gate{position:fixed; inset:0; z-index:120; display:none; align-items:center; justify-content:center; padding:24px;
+    background:linear-gradient(145deg,#f9d9de 0%,#f8e8eb 44%,#fff8f8 100%);}
+  body.auth-locked .auth-gate{display:flex;}
+  body.auth-locked>.topbar,body.auth-locked>.wrap,body.auth-locked>.tabs{display:none;}
+  .auth-card{width:min(420px,100%); padding:34px 30px 30px; border-radius:28px; background:rgba(255,255,255,.7);
+    border:1px solid rgba(255,255,255,.84); box-shadow:0 24px 70px -22px rgba(160,50,64,.3);
+    backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px);}
+  .auth-mark{width:52px;height:52px;border-radius:17px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,var(--blue),#f17a80);color:#fff;font-size:25px;box-shadow:0 10px 22px rgba(201,47,54,.24);}
+  .auth-card h2{margin:18px 0 6px;font-size:22px;color:var(--ink);}
+  .auth-card p{margin:0 0 22px;color:var(--sub);font-size:13px;line-height:1.7;}
+  .auth-field{margin-bottom:13px;}
+  .auth-field label{display:block;margin:0 0 6px;font-size:12px;font-weight:700;color:#707b8d;}
+  .auth-error{min-height:20px;margin:8px 0 4px;color:var(--red);font-size:12px;line-height:1.5;}
+  .auth-note{margin-top:16px!important;text-align:center;font-size:11px!important;}
+  .user-chip{display:none;align-items:center;gap:7px;max-width:180px;padding:8px 11px;border:1px solid var(--glass-border);
+    border-radius:13px;background:var(--glass-bg);color:var(--sub);font-size:11px;cursor:pointer;box-shadow:var(--glass-shadow);}
+  .user-chip.show{display:flex;}.user-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  /* 底部：打卡标签 */
+  .rk-tag{display:inline-flex; align-items:center; gap:2px; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:600;}
+  .rk-tag-ok{background:rgba(220,38,38,.08); color:var(--red); border:1px solid rgba(220,38,38,.18);}
+  .rk-tag-warn{background:rgba(190,18,60,.06); color:#be123c; border:1px solid rgba(190,18,60,.16);}
+
+  @media(max-width:560px){
+    .rank-card{padding:12px 14px; gap:10px; border-radius:14px;}
+    .rk-badge{width:30px; height:30px; font-size:13px;}
+    .rk-name{font-size:15px;}
+    .rk-store{font-size:11px;}
+    .rk-stats{gap:5px;}
+    .rk-stat{min-width:46px;}
+    .rk-stat .val{font-size:14px;}
+    .rk-stat .lbl{font-size:9px;}
+    .rk-tag{padding:1px 6px; font-size:10px;}
+  }
+
+  @media(min-width:720px){ .modal{align-items:center;} .modal .box{border-radius:24px;} }
+  @media(max-width:560px){ .stats{grid-template-columns:repeat(3,1fr);}
+    th,td{padding:8px 4px; font-size:12px;}
+    .banner .stat b{font-size:17px; letter-spacing:-.3px;} .banner .stat{min-width:56px; padding:12px 6px;}
+    .banner .stat-ct{min-width:42px; padding:12px 4px;} .banner .stat-sales{flex:3 1 0; min-width:88px;}
+    .banner .stat-sales b{font-size:15px; letter-spacing:-.3px;}
+    table{font-size:12px; table-layout:fixed;}
+    .nm{max-width:70px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block;}
+    .st{max-width:65px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block;}
+  }
+</style>
+</head>
+<body class="auth-locked">
+
+<div class="bg-blobs" aria-hidden="true"><i></i></div>
+
+<div class="auth-gate" id="authGate" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+  <form class="auth-card" onsubmit="signIn(event)">
+    <div class="auth-mark">✦</div>
+    <h2 id="authTitle">进入 3PP 训练营作战台</h2>
+    <p>工作台数据已启用访问保护。请使用管理员创建的账号登录，未登录用户无法读取或修改共享数据。</p>
+    <div class="auth-field">
+      <label for="authEmail">登录邮箱</label>
+      <input class="input" id="authEmail" type="email" autocomplete="username" required placeholder="name@example.com">
+    </div>
+    <div class="auth-field">
+      <label for="authPassword">密码</label>
+      <input class="input" id="authPassword" type="password" autocomplete="current-password" required minlength="8" placeholder="请输入密码">
+    </div>
+    <div class="auth-error" id="authError" aria-live="polite"></div>
+    <button class="btn primary block" id="authSubmit" type="submit">安全登录</button>
+    <p class="auth-note">不开放网页注册 · 账号由项目管理员统一创建</p>
+  </form>
+</div>
+
+<div class="topbar">
+  <div>
+    <h1>3PP训练营作战台</h1>
+    <div class="ev">酷果星创 · 先锋小队PK赛 + 专项提升</div>
+  </div>
+  <div class="spacer"></div>
+  <button class="user-chip" id="userChip" onclick="signOut()" title="退出登录">
+    <span id="userEmail"></span><b>退出</b>
+  </button>
+  <button class="iconbtn" onclick="openData()" aria-label="数据">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </button>
+</div>
+
+<div class="wrap">
+  <div class="banner">
+    <div class="t" id="bTitle">酷果星创 · 3PP先锋小队销售积分赛</div>
+    <div class="sync-row">
+      <div class="sync" id="bSync"></div>
+      <div class="sync mode" id="bMode"></div>
+    </div>
+    <div class="row" id="bannerRow"></div>
+  </div>
+
+  <!-- ============ 先锋PK ============ -->
+  <div class="panel active" id="panel-pioneer">
+    <div id="pioToday"></div>
+    <div class="card">
+      <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>先锋小队 · 积分/销售额排名</h3>
+      <div class="seg" id="pioSeg">
+        <button class="on" data-k="score" onclick="switchPio('score')">积分排名</button>
+        <button data-k="sales" onclick="switchPio('sales')">销售额排名</button>
+      </div>
+      <div class="rank-list" id="pioTable"></div>
+    </div>
+    <div class="card">
+      <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="2" y="13" width="20" height="9" rx="2"/></svg>奖项预览（前20名兑奖）</h3>
+      <div id="prizeBox" class="hint"></div>
+    </div>
+  </div>
+
+  <!-- ============ 专项提升 ============ -->
+  <div class="panel" id="panel-boost">
+    <div class="card">
+      <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>专项提升 · 数据榜</h3>
+      <div class="hint" style="margin-bottom:12px">指标均来自 BI 上传（含音频销量）；裸机≥3次标红需提交视频演练。</div>
+      <div style="overflow-x:auto">
+        <table id="boostTable"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 录入 ============ -->
+  <div class="panel" id="panel-entry">
+    <div class="card">
+      <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>晒单录积分（先锋小队PK）</h3>
+      <div class="search-box">
+        <input class="input" id="searchInput" placeholder="搜索咨询师姓名…" oninput="onSearch()" autocomplete="off">
+        <div class="search-results" id="searchResults"></div>
+      </div>
+      <div id="entrySel"></div>
+      <div id="entryForm" style="display:none">
+        <div class="selbox" id="selInfo"></div>
+        <div class="row-flex" style="margin-bottom:6px">
+          <input class="input plain" id="amountInput" type="number" inputmode="decimal" placeholder="本笔3PP金额（元）" oninput="onAmountInput()" style="flex:1; min-width:140px">
+        </div>
+        <div class="hint" style="margin:2px 0 8px">金额仅用于自动匹配档位，不计入销售额（销售额由 BI 更新）。</div>
+        <div class="quick" id="quickBtns"></div>
+        <div style="margin:6px 0 4px; font-size:13px; font-weight:700">额外加分</div>
+        <div class="row-flex" style="margin-bottom:8px">
+          <span class="check" id="exCombo" onclick="toggleEx('combo')">☉ 音颖联单 (+1)</span>
+          <span class="check" id="exTop" onclick="toggleEx('topSales')">☉ 万元榜单 (+5)</span>
+        </div>
+        <div class="row-flex" style="margin-bottom:10px">
+          <span class="check" id="exCase" onclick="toggleEx('caseShare')">☉ 案例分享</span>
+          <select id="caseSel" class="input" style="width:auto; padding:8px" onchange="renderExCase()">
+            <option value="0">+0</option><option value="1">+1</option><option value="2">+2</option><option value="3">+3</option><option value="4">+4</option><option value="5">+5</option>
+          </select>
+        </div>
+        <input class="input" id="noteInput" placeholder="备注（如：韶音耳机+音响联单）" style="margin-bottom:10px">
+        <button class="btn primary block" onclick="submitRecord()">确认提交积分</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>今日录入记录</h3>
+      <div id="entryHistory"></div>
+    </div>
+  </div>
+
+  <!-- ============ 裸机复盘 ============ -->
+  <div class="panel" id="panel-naked">
+    <div class="card">
+      <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>裸机销售复盘</h3>
+      <div class="hint" style="margin-bottom:10px">判定：<b>前一日主机有成交，但3PP未成交</b>。名单由每次 BI 上传自动生成（当日）。在群内完成复盘后点「已复盘」。</div>
+      <div id="nakedBox"></div>
+    </div>
+    <div class="card">
+      <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>需提交视频演练（裸机≥3次）</h3>
+      <div id="videoBox" class="hint"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 底部导航 -->
+<div class="tabs">
+  <button class="tab active" data-p="pioneer" onclick="switchTab('pioneer')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+    先锋PK
+  </button>
+  <button class="tab" data-p="boost" onclick="switchTab('boost')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+    专项提升
+  </button>
+  <button class="tab" data-p="entry" onclick="switchTab('entry')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+    录入
+  </button>
+  <button class="tab" data-p="naked" onclick="switchTab('naked')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    裸机复盘
+  </button>
+</div>
+
+<!-- 数据弹窗 -->
+<div class="modal" id="dataModal">
+  <div class="box">
+    <h3>数据管理 <button class="close" onclick="closeModal('dataModal')">×</button></h3>
+    <div class="row-flex" style="margin-bottom:12px">
+      <button class="btn primary" style="flex:1" onclick="openBI()">📥 上传BI表格</button>
+      <button class="btn ghost" style="flex:1" onclick="exportJSON()">导出备份</button>
+    </div>
+    <div class="row-flex" style="margin-bottom:12px">
+      <button class="btn ghost" style="flex:1" onclick="importJSON()">导入恢复</button>
+      <button class="btn ghost" style="flex:1" onclick="exportCSV()">导出CSV</button>
+    </div>
+    <button class="btn red block" onclick="clearAll()">清空全部数据（二次确认）</button>
+    <p class="hint" style="margin-top:10px">数据通过登录账号安全同步至云端，不在浏览器长期缓存。建议每次 BI 上传后仍导出一份 JSON 备份。</p>
+  </div>
+</div>
+
+<!-- BI导入弹窗 -->
+<div class="modal" id="biModal">
+  <div class="box">
+    <h3>上传 BI 销售表格 <button class="close" onclick="closeModal('biModal')">×</button></h3>
+    <p class="hint" style="margin-bottom:10px">建议每日导出「<b>8月1日 – 前一日</b>」的累计数据上传。系统自动：①同时更新先锋小队+专项提升；②计算昨日增量；③生成裸机复盘名单。</p>
+    <label class="drop" id="dropLabel">
+      📎 选择 BI 表格文件（.xlsx / .csv）
+      <input type="file" id="biFile" accept=".xlsx,.csv" style="display:none" onchange="biFilePicked(event)">
+    </label>
+    <div id="biFileInfo" style="margin:10px 0; font-size:13px"></div>
+    <div style="text-align:center; color:var(--sub); font-size:12px; margin:6px 0">—— 或粘贴文本（姓名,销售额） ——</div>
+    <textarea id="biText" placeholder="张伟,28650&#10;李娜 26480"></textarea>
+    <button class="btn primary block" style="margin-top:12px" onclick="doBIImport()">导入更新</button>
+  </div>
+</div>
+
+<!-- 导入恢复 隐藏file -->
+<input type="file" id="importFile" accept=".json" style="display:none" onchange="importFilePicked(event)">
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ===================== 预设数据 ===================== */
+  const PRESET_PIONEER = [];
+  const PRESET_BOOST = [];
+
+/* ===================== 云端同步（Supabase，可选） ===================== */
+const SB_URL='https://tbinpnbpmcyliybknqit.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRiaW5wbmJwbWN5bGl5YmtucWl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYyNjg5MTEsImV4cCI6MjEwMTg0NDkxMX0.SI9FQ91KJ7gfyjss4uMbqqRLTBYMjTYE0gxTq_DgybE';
+const SYNC_KEY='shared';
+const sbClient=(SB_URL&&SB_URL.indexOf('YOUR_')!==0&&SB_KEY&&SB_KEY.indexOf('YOUR_')!==0&&typeof window!=='undefined'&&window.supabase)?window.supabase.createClient(SB_URL,SB_KEY):null;
+function sbReady(){return !!sbClient;}
+function mergeState(o){return Object.assign({pioneers:[],boosts:[],records:[],prevBI:{},nakedToday:[],reviewedToday:[],lastImportDate:''},o||{});}
+let authUser=null;
+let realtimeChannel=null;
+
+/* ===================== 状态 ===================== */
+const LS_KEY='wb_3pp_pk_v2';
+const EVENT_END=new Date(2026,7,31); // 8月31日
+let state={pioneers:[],boosts:[],records:[],prevBI:{},nakedToday:[],reviewedToday:[],lastImportDate:''};
+let pioSort='score';
+let biParsed=null;
+let selPersonId=null;
+let exState={combo:false,topSales:false,caseShare:false};
+let curBase=0;
+
+/* ===================== 工具 ===================== */
+function $(id){return document.getElementById(id);}
+let _toastTimer=null;
+function toast(msg,type){
+  const el=$('toast'); if(!el)return;
+  el.textContent=msg||'';
+  el.className='toast show'+(type?(' '+type):'');
+  if(_toastTimer)clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>{el.className='toast'+(type?(' '+type):'');},2200);
+}
+function uid(p){return (p||'')+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36);}
+function r1(n){return Math.round((n||0)*10)/10;}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function fmt(n){if(n==null||isNaN(n))return '0';return (Math.round(n*100)/100).toLocaleString('zh-CN');}
+function money(n){return '¥'+Math.round(n||0).toLocaleString('zh-CN');}
+function daysLeft(){const t=new Date();t.setHours(0,0,0,0);const e=new Date(EVENT_END);e.setHours(0,0,0,0);return Math.max(0,Math.round((e-t)/86400000));}
+function all(){return [...state.pioneers,...state.boosts];}
+function findP(id){return all().find(p=>p.id===id);}
+let currentTab='pioneer';
+
+/* ===================== 初始化 ===================== */
+function mkPioneer(p){return {id:'P'+uid(),name:p.name,store:p.store||'',camp:'pioneer',
+  totalScore:p.baseScore||0,totalSales:p.baseSales||0,validOrders:0,
+  combo:0,caseShare:0,topSales:0,
+  monthHostVol:0,monthHostAmt:0,monthPPVol:0,monthPPAmtEx:0,monthPPAmt:0,ppPriceEx:0,
+  yHostVol:0,yPPVol:0,yPPAmtEx:0,audioVol:0,nakedCount:0};}
+function mkBoost(p){return {id:'B'+uid(),name:p.name,store:p.store||'',camp:'boost',
+  totalScore:0,totalSales:0,validOrders:0,
+  monthHostVol:0,monthHostAmt:0,monthPPVol:0,monthPPAmtEx:0,monthPPAmt:0,ppPriceEx:0,
+  yHostVol:0,yPPVol:0,yPPAmtEx:0,audioVol:0,nakedCount:0};}
+function seedData(){
+  state.pioneers=PRESET_PIONEER.map(mkPioneer);
+  state.boosts=PRESET_BOOST.map(mkBoost);
+  state.records=[]; state.prevBI={}; state.nakedToday=[]; state.reviewedToday=[]; state.lastImportDate='';
+}
+function save(){
+  // 云端模式不在浏览器缓存业务数据，避免退出登录后仍从本机读取人员信息。
+  if(sbReady()){pushCloud();return;}
+  try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){toast('保存失败：'+e.message,'err');}
+}
+function loadLocal(){try{const s=localStorage.getItem(LS_KEY);if(!s)return false;state=mergeState(JSON.parse(s));return true;}catch(e){return false;}}
+async function pushCloud(){
+  if(!sbReady()||!authUser)return;
+  try{
+    const {error}=await sbClient.from('app_state').upsert({key:SYNC_KEY,value:state,updated_at:new Date().toISOString()});
+    if(error){console.warn('云端同步失败:',error.message);toast('云端保存失败，请检查登录状态','err');}
+  }catch(e){toast('云端保存失败，请稍后重试','err');}
+}
+async function loadState(){
+  if(sbReady()&&authUser){
+    try{
+      const {data,error}=await sbClient.from('app_state').select('value').eq('key',SYNC_KEY).maybeSingle();
+      if(error)throw error;
+      if(data&&data.value){state=mergeState(data.value);return true;}
+      state=mergeState();
+      return true;
+    }catch(e){toast('无法读取云端数据，请确认账号权限','err');return false;}
+  }
+  if(!sbReady()){if(!loadLocal())seedData();return true;}
+  return false;
+}
+function setupRealtime(){
+  if(!sbReady()||!authUser)return;
+  try{
+    if(realtimeChannel)sbClient.removeChannel(realtimeChannel);
+    realtimeChannel=sbClient.channel('app_state_'+SYNC_KEY)
+      .on('postgres_changes',{event:'*',schema:'public',table:'app_state',filter:'key=eq.'+SYNC_KEY},
+        ()=>{loadState().then(()=>{renderAll();toast('数据已同步更新','ok');});})
+      .subscribe();
+  }catch(e){}
+}
+
+function setAuthUI(locked,message){
+  document.body.classList.toggle('auth-locked',!!locked);
+  const err=$('authError');if(err)err.textContent=message||'';
+  const chip=$('userChip');
+  if(chip)chip.classList.toggle('show',!!authUser&&!locked);
+  const email=$('userEmail');if(email)email.textContent=authUser&&authUser.email?authUser.email:'';
+  if(locked)setTimeout(()=>{$('authEmail')&&$('authEmail').focus();},50);
+}
+async function signIn(event){
+  if(event)event.preventDefault();
+  if(!sbReady()){setAuthUI(true,'云端服务未配置，请联系管理员');return;}
+  const email=($('authEmail').value||'').trim();
+  const password=$('authPassword').value||'';
+  const btn=$('authSubmit');btn.disabled=true;btn.textContent='正在登录…';
+  $('authError').textContent='';
+  try{
+    const {data,error}=await sbClient.auth.signInWithPassword({email,password});
+    if(error)throw error;
+    authUser=data.user;
+    const ok=await loadState();
+    if(!ok)throw new Error('账号暂未获得数据访问权限');
+    setAuthUI(false);
+    $('authPassword').value='';
+    renderAll();setupRealtime();toast('登录成功','ok');
+  }catch(e){
+    authUser=null;
+    setAuthUI(true,e&&e.message==='Invalid login credentials'?'邮箱或密码不正确':(e.message||'登录失败，请稍后重试'));
+  }finally{btn.disabled=false;btn.textContent='安全登录';}
+}
+async function signOut(){
+  if(!sbReady())return;
+  try{await sbClient.auth.signOut();}catch(e){}
+  authUser=null;state=mergeState();
+  if(realtimeChannel){try{await sbClient.removeChannel(realtimeChannel);}catch(e){}realtimeChannel=null;}
+  setAuthUI(true,'');
+}
+async function restoreSession(){
+  if(!sbReady()){setAuthUI(false);return true;}
+  try{localStorage.removeItem(LS_KEY);}catch(e){}
+  try{
+    const {data,error}=await sbClient.auth.getSession();
+    if(error)throw error;
+    authUser=data.session&&data.session.user?data.session.user:null;
+    if(!authUser){setAuthUI(true,'');return false;}
+    setAuthUI(false);return true;
+  }catch(e){setAuthUI(true,'无法验证登录状态，请重新登录');return false;}
+}
+
+/* ===================== 渲染：顶部 ===================== */
+function renderBanner(){
+  const pio=state.pioneers.length, boost=state.boosts.length;
+  const pioSales=state.pioneers.reduce((s,p)=>s+(p.totalSales||0),0);
+  const boostSales=state.boosts.reduce((s,p)=>s+(p.monthPPAmt||0),0);
+  const pioAudio=state.pioneers.reduce((s,p)=>s+(p.audioVol||0),0);
+  const boostAudio=state.boosts.reduce((s,p)=>s+(p.audioVol||0),0);
+  const boostHost=state.boosts.reduce((s,p)=>s+(p.monthHostVol||0),0);
+  const total=pio+boost, totalSales=pioSales+boostSales, totalAudio=pioAudio+boostAudio;
+  const C=(v,l,title,cls)=>`<div class="stat ${cls||''}"><b>${v}</b>${title?`<span title="${title}">${l}</span>`:`<span>${l}</span>`}</div>`;
+  const d=daysLeft();
+  let html;
+  if(currentTab==='pioneer'){
+    html=C(d,'距结束天数')+C(pio,'人数',null,'stat-ct')+C(money(pioSales),'3PP销售额',null,'stat-sales')+C(fmt(pioAudio),'音频数量');
+  }else if(currentTab==='boost'){
+    const boostSalesEx=state.boosts.reduce((s,p)=>s+(p.monthPPAmtEx||0),0);
+    const price=boostHost>0?money(boostSalesEx/boostHost):'—';
+    html=C(d,'距结束天数')+C(boost,'人数',null,'stat-ct')+C(money(boostSalesEx),'3PP销售额',null,'stat-sales')+C(fmt(boostAudio),'音频数量')
+        +C(price,'不含大疆客单价','全员3PP销售额(不含大疆) / 主机销量');
+  }else{
+    html=C(d,'距结束天数')+C(total,'总人数',null,'stat-ct')+C(money(totalSales),'总3PP销售额',null,'stat-sales')+C(fmt(totalAudio),'总音频数量');
+  }
+  const bTitle=$('bTitle');
+  if(bTitle) bTitle.textContent = currentTab==='boost' ? '专项提升训练营数据概览'
+    : currentTab==='naked' ? '裸机销售复盘看板'
+    : '酷果星创 · 3PP先锋小队销售积分赛';
+  const bSync=$('bSync');
+  if(bSync){
+    const ld=state.lastImportDate;
+    if(ld && /^\d{4}-\d{2}-\d{2}$/.test(ld)){
+      const p=ld.split('-'); const md=parseInt(p[1])+'月'+parseInt(p[2])+'日';
+      bSync.innerHTML='<span class="dot"></span>数据已同步至 <b>'+parseInt(p[0])+'年'+md+'</b>';
+      bSync.classList.remove('empty');
+    }else{
+      bSync.innerHTML='<span class="dot"></span>尚未导入 BI 数据';
+      bSync.classList.add('empty');
+    }
+  }
+  const bMode=$('bMode');
+  if(bMode){
+    bMode.innerHTML = sbReady()&&authUser? '<span class="dot"></span>安全云同步已开启' : '<span class="dot off"></span>本地模式（未开启云同步）';
+  }
+  $('bannerRow').innerHTML=html;
+}
+
+/* ===================== 渲染：先锋PK（卡片式） ===================== */
+function shortStore(s){return (s||'').replace(/^酷果星创/,'');}
+function renderPioneer(){
+  const list=state.pioneers.slice().sort((a,b)=> pioSort==='score' ? b.totalScore-a.totalScore : b.totalSales-a.totalSales);
+  const maxSales = list.length ? Math.max(...list.map(p=>p.totalSales||0)) : 1;
+  const targetSales = 20000; // 个人3PP销售额目标
+  let html='';
+  list.forEach((p,i)=>{
+    const rk=i+1;
+    const isTop3 = rk<=3;
+    const badgeCls = rk===1?'rk-gold':rk===2?'rk-silver':rk===3?'rk-bronze':'rk-norm';
+    const pct = targetSales>0 ? Math.min(100, Math.round((p.totalSales||0)/targetSales*100)) : 0;
+    const barCls = pct>=100 ? 'red-done' : 'red';
+    // 销售数据
+    const score = fmt(p.totalScore||0);
+    const sales = money(p.totalSales||0);
+    const host = p.monthHostVol||0;
+    const audio = p.audioVol||0;
+    // 排名卡片：姓名在上、门店在下
+    html+=`<div class="rank-card${isTop3?' rank-top3':''}">
+      <div class="rk-badge ${badgeCls}">${rk}</div>
+      <div class="rk-body">
+        <div class="rk-name">${esc(p.name)}</div>
+        <div class="rk-store">${esc(shortStore(p.store))}</div>
+        <div class="rk-bar-row">
+          <div class="rk-bar"><div class="rk-bar-fill ${barCls}" style="width:${pct}%"></div></div>
+          <span class="rk-pct">${pct}%</span>
+        </div>
+        <div class="rk-checks">距目标 ¥${fmt(targetSales)} · 已达成 ${money(p.totalSales||0)}</div>
+      </div>
+      <div class="rk-stats">
+        <div class="rk-stat"><div class="val rk-val-score">${score}</div><div class="lbl">积分</div></div>
+        <div class="rk-stat"><div class="val rk-val-sales">${sales}</div><div class="lbl">销售额</div></div>
+        <div class="rk-stat"><div class="val rk-val-host">${host}</div><div class="lbl">主机销量</div></div>
+        <div class="rk-stat"><div class="val rk-val-audio">${audio}</div><div class="lbl">音频销量</div></div>
+      </div>
+    </div>`;
+  });
+  $('pioTable').innerHTML=html;
+  // today
+  const nakedPio=state.nakedToday.filter(n=>n.camp==='pioneer');
+  const todayRecs=state.records.filter(r=>r.date===todayStr()).length;
+  let t='';
+  if(nakedPio.length){t+=`⚠️ 今日 ${nakedPio.length} 位先锋队员出现裸机销售，<a href="javascript:switchTab('naked')" style="color:var(--blue)">去复盘→</a>`;}
+  if(todayRecs){t+= (t?'<br>':'')+`📝 今日已录 ${todayRecs} 笔积分`;}
+  $('pioToday').innerHTML = t?`<div class="today">${t}</div>`:'';
+  // 奖项预览
+  renderPrize(list);
+}
+function renderPrize(list){
+  const prize=[
+    {r:[1,3],name:'Insta Snap 手机自拍屏',n:3,v:1797},
+    {r:[4,10],name:'Stanley 水杯',n:7,v:2793},
+    {r:[11,20],name:'大麦M5 薄磁吸移动电源',n:10,v:2990}
+  ];
+  let h='<div style="font-size:12px;line-height:1.9">';
+  const top=list.slice(0,20);
+  prize.forEach(pr=>{
+    const who=top.filter((p,i)=> i+1>=pr.r[0] && i+1<=pr.r[1]).map(p=>esc(p.name));
+    h+=`<b>第${pr.r[0]}-${pr.r[1]}名</b>：${pr.name} ×${pr.n}（¥${pr.v}）<br><span class="mini">当前：${who.length?who.join('、'):'—'}</span><br>`;
+  });
+  h+='</div>';
+  $('prizeBox').innerHTML=h;
+}
+
+/* ===================== 渲染：专项提升 ===================== */
+function renderBoost(){
+  const list=state.boosts.slice().sort((a,b)=> (b.monthPPAmtEx||0)-(a.monthPPAmtEx||0));
+  let html='<thead><tr><th>排名</th><th>姓名/门店</th><th>昨日主机销量</th><th>昨日3PP客单价<br>(不含大疆)</th><th>月度3PP销售额<br>(不含大疆)</th><th>月度3PP客单价<br>(不含大疆)</th><th>月度音频<br>销量</th><th>标记</th></tr></thead><tbody>';
+  list.forEach((p,i)=>{
+    const rk=i+1; const medal = rk<=3?`<span class="medal m${rk}">${rk}</span>`:`<span class="rank">${rk}</span>`;
+    const yPrice = p.yHostVol>0 ? money(p.yPPAmtEx/p.yHostVol) : '—';
+    const mPrice = p.monthHostVol>0 ? money(p.monthPPAmtEx/p.monthHostVol) : '—';
+    let tag='';
+    if(p.nakedCount>=3) tag='<span class="pill video">视频演练</span>';
+    else if(p.nakedCount>0) tag=`<span class="pill nake">裸机×${p.nakedCount}</span>`;
+    html+=`<tr><td>${medal}</td>`+
+      `<td><div class="nm">${esc(p.name)}</div><div class="st">${esc(p.store)}</div></td>`+
+      `<td>${p.yHostVol||0}</td>`+
+      `<td>${yPrice}</td>`+
+      `<td>${money(p.monthPPAmtEx||0)}</td>`+
+      `<td>${mPrice}</td>`+
+      `<td><b class="audnum">${p.audioVol||0}</b></td>`+
+      `<td>${tag}</td></tr>`;
+  });
+  html+='</tbody>';
+  $('boostTable').innerHTML=html;
+}
+
+/* ===================== 渲染：裸机复盘 ===================== */
+function renderNaked(){
+  const box=$('nakedBox');
+  if(!state.nakedToday.length){
+    box.innerHTML='<div class="hint">暂无裸机名单。上传 BI 表格后，系统会自动筛出「前一日主机有成交、但3PP未成交」的人员。</div>';
+  }else{
+    let h='<div class="naked-list">';
+    state.nakedToday.forEach(n=>{
+      const p=all().find(x=>x.name===n.name && x.camp===n.camp);
+      const reviewed=state.reviewedToday.includes(n.name);
+      const campTxt=n.camp==='pioneer'?'先锋小队':'专项提升';
+      h+=`<div class="item"><div class="info"><b>${esc(n.name)}</b><span>${esc(p?p.store:'')} · ${campTxt} · 累计裸机 ${p?p.nakedCount:0} 次</span></div>`+
+        (reviewed?`<span class="reviewed">✓ 已复盘</span>`:`<button class="btn primary" style="padding:8px 14px" onclick="markReviewed('${esc(n.name)}')">已复盘</button>`)+
+        `</div>`;
+    });
+    h+='</div>';
+    box.innerHTML=h;
+  }
+  // 视频演练
+  const vids=all().filter(p=>p.nakedCount>=3);
+  $('videoBox').innerHTML = vids.length
+    ? '以下人员裸机销售累计≥3次，需提交视频演练：<br><b>'+vids.map(p=>esc(p.name)).join('、')+'</b>'
+    : '目前无人达到「裸机≥3次」。';
+}
+
+/* ===================== 录入 ===================== */
+function onSearch(){
+  const q=$('searchInput').value.trim();
+  const box=$('searchResults');
+  if(!q){box.classList.remove('show');return;}
+  const r=state.pioneers.filter(p=>p.name.includes(q)).slice(0,20);
+  box.innerHTML=r.map(p=>`<div onclick="selectPerson('${p.id}')">${esc(p.name)} <span class="st">${esc(p.store)}</span></div>`).join('')||'<div class="st" style="padding:11px">无匹配</div>';
+  box.classList.add('show');
+}
+function selectPerson(id){
+  selPersonId=id; const p=findP(id);
+  $('searchResults').classList.remove('show');
+  $('entryForm').style.display='block';
+  $('entrySel').innerHTML=`<div class="selbox">已选：<b>${esc(p.name)}</b> ｜ ${esc(p.store)}<br>当前积分 <b>${fmt(p.totalScore)}</b> ｜ 销售额 ${money(p.totalSales||0)}</div>`;
+  $('amountInput').value=''; curBase=0; exState={combo:false,topSales:false,caseShare:false};
+  syncExUI(); renderQuick();
+}
+function onAmountInput(){
+  const amt=parseFloat($('amountInput').value)||0;
+  curBase = amt>=2000?1.5 : amt>=1000?1.2 : amt>=599?0.8 : 0;
+  renderQuick();
+}
+function renderQuick(){
+  const btns=[{v:0.8,t:'599-999'},{v:1.2,t:'1000-1999'},{v:1.5,t:'2000+'}];
+  $('quickBtns').innerHTML=btns.map(b=>`<div class="qbtn ${Math.abs(curBase-b.v)<1e-6?'on':''}" onclick="setBase(${b.v})">+${b.v}分<span class="s">${b.t}</span></div>`).join('')+
+    `<div class="qbtn ${curBase>0&&![0.8,1.2,1.5].includes(curBase)?'on':''}" onclick="setBase(-1)">+自定义<span class="s">手动</span></div>`;
+}
+function setBase(v){ if(v<0){const x=prompt('输入自定义积分（如 2.3）');curBase=parseFloat(x)||0;}else curBase=v; renderQuick(); }
+function toggleEx(k){exState[k]=!exState[k];syncExUI();}
+function syncExUI(){
+  ['combo','topSales','caseShare'].forEach(k=>{const el=$('ex'+k[0].toUpperCase()+k.slice(1));if(el)el.classList.toggle('on',!!exState[k]);});
+}
+function renderExCase(){/* noop, select drives value */}
+function extraScore(){let s=0;if(exState.combo)s+=1;if(exState.topSales)s+=5;if(exState.caseShare)s+=parseInt($('caseSel').value||'0',10);return s;}
+function submitRecord(){
+  if(!selPersonId){toast('请先搜索并选择咨询师','err');return;}
+  const p=findP(selPersonId); if(!p){toast('人员无效','err');return;}
+  if(!curBase){toast('请选择积分档位或自定义','err');return;}
+  const es=extraScore(); const total=r1(curBase+es);
+  const rec={id:uid('R'),consultantId:p.id,consultantName:p.name,date:todayStr(),
+    salesAmount:parseFloat($('amountInput').value)||0,baseScore:curBase,
+    extras:{combo:exState.combo?1:0,caseShare:exState.caseShare?parseInt($('caseSel').value||'0',10):0,topSales:exState.topSales?1:0},
+    extraScore:es,totalScore:total,note:$('noteInput').value.trim(),createdAt:new Date().toISOString()};
+  state.records.push(rec);
+  p.totalScore=r1(p.totalScore+total);
+  if(exState.combo)p.combo++; if(exState.topSales)p.topSales++; if(exState.caseShare)p.caseShare+=parseInt($('caseSel').value||'0',10);
+  save(); renderAll();
+  toast('已为 '+p.name+' 加 '+total+' 分','ok');
+  $('noteInput').value=''; selPersonId=null; $('entryForm').style.display='none'; $('searchInput').value='';
+}
+function renderEntryHistory(){
+  const list=state.records.slice().reverse().slice(0,30);
+  if(!list.length){$('entryHistory').innerHTML='<div class="hint">还没有录入记录。</div>';return;}
+  let h='<div class="naked-list">';
+  list.forEach(r=>{
+    h+=`<div class="item"><div class="info"><b>${esc(r.consultantName)}</b><span>${r.date} ｜ +${fmt(r.totalScore)}分${r.note?' ｜ '+esc(r.note):''}</span></div>`+
+      `<button class="btn ghost" style="padding:6px 12px" onclick="undoRec('${r.id}')">撤销</button></div>`;
+  });
+  h+='</div>';
+  $('entryHistory').innerHTML=h;
+}
+function undoRec(id){
+  const r=state.records.find(x=>x.id===id); if(!r)return;
+  const p=findP(r.consultantId);
+  if(p){p.totalScore=r1(p.totalScore-r.totalScore); if(r.extras.combo)p.combo--; if(r.extras.topSales)p.topSales--; if(r.extras.caseShare)p.caseShare-=r.extras.caseShare;}
+  state.records=state.records.filter(x=>x.id!==id);
+  save(); renderAll(); toast('已撤销','ok');
+}
+
+/* ===================== BI 导入 ===================== */
+function openData(){$('dataModal').classList.add('show');}
+function openBI(){biParsed=null;$('biText').value='';$('biFileInfo').innerHTML='';$('biModal').classList.add('show');}
+function closeModal(id){$(id).classList.remove('show');}
+
+async function biFilePicked(e){
+  const f=e.target.files&&e.target.files[0]; if(!f)return;
+  $('biFileInfo').innerHTML='解析中…';
+  try{
+    const rows=await parseTableFile(f);
+    if(!rows||rows.length<2)throw new Error('表格为空或格式无法识别');
+    const res=computeBI(rows);
+    biParsed={rows, preview:res};
+    let info=`✅ 已识别 <b>${res.total}</b> 行 ｜ 匹配两个营共 <b>${res.matched}</b> 人 ｜ 未匹配 <b>${res.unmatched.length}</b> 人`;
+    if(res.unmatched.length)info+='<br><span style="color:#b45309">未匹配：'+esc(res.unmatched.slice(0,12).join('、'))+(res.unmatched.length>12?'…':'')+'</span>';
+    if(res.naked>0)info+='<br><span style="color:#dc2626">⚠️ 本次筛出 <b>'+res.naked+'</b> 位裸机销售（主机成交/3PP未成交）</span>';
+    $('biFileInfo').innerHTML=info;
+    toast('文件已解析，点「导入更新」生效','ok');
+  }catch(err){biParsed=null;$('biFileInfo').innerHTML='<span style="color:#dc2626">解析失败：'+esc(err.message)+'</span>';toast('解析失败：'+err.message,'err');}
+}
+
+function computeBI(rows){
+  const hdr=rows[0].map(h=>String(h==null?'':h).trim());
+  const nameIdx=hdr.findIndex(h=>h&&(h.includes('姓名')||/^name$/i.test(h)));
+  if(nameIdx<0)throw new Error('未找到「姓名」列，请确认表头含"姓名"');
+  const idxOf=re=>hdr.findIndex(h=>h&&re.test(h));
+  const hostVolIdx=idxOf(/主机销量/), hostAmtIdx=idxOf(/主机销售金额/),
+        ppVolIdx=idxOf(/3PP销量/), ppAmtExIdx=idxOf(/3PP销售额/), djiIdx=idxOf(/大疆销售额/), audioIdx=idxOf(/音频销量/);
+  const num=(row,idx)=>{if(idx<0)return 0;const v=parseFloat(String(row[idx]==null?'':row[idx]).replace(/[¥,，\s]/g,''));return isNaN(v)?0:v;};
+  const newSnap={}; const snapRows=[];
+  for(let i=1;i<rows.length;i++){
+    const row=rows[i]; const nm=String(row[nameIdx]==null?'':row[nameIdx]).trim(); if(!nm)continue;
+    const rec={hostVol:num(row,hostVolIdx),hostAmt:num(row,hostAmtIdx),ppVol:num(row,ppVolIdx),ppAmtEx:num(row,ppAmtExIdx),djiAmt:num(row,djiIdx),audio:num(row,audioIdx)};
+    newSnap[nm]=rec; snapRows.push({nm,rec});
+  }
+  const prev=state.prevBI||{}; let matched=0; const unmatched=[]; const nakedNames={};
+  snapRows.forEach(({nm,rec})=>{
+    let d; if(prev[nm]){d={hostVol:rec.hostVol-prev[nm].hostVol,ppVol:rec.ppVol-prev[nm].ppVol};}
+    else{d={hostVol:0,ppVol:0};}
+    const persons=all().filter(p=>p.name===nm);
+    if(!persons.length){unmatched.push(nm);}
+    matched+=persons.length;
+    if(prev[nm]&&d.hostVol>0&&d.ppVol===0){nakedNames[nm]=(nakedNames[nm]||0)+1;}
+  });
+  return {snapRows,newSnap,matched,unmatched,total:snapRows.length,naked:Object.keys(nakedNames).length};
+}
+function applyBI(rows){
+  const c=computeBI(rows);
+  const prev=state.prevBI||{}; const nakedNew=[];
+  c.snapRows.forEach(({nm,rec})=>{
+    let d; if(prev[nm]){d={hostVol:rec.hostVol-prev[nm].hostVol,hostAmt:rec.hostAmt-prev[nm].hostAmt,ppVol:rec.ppVol-prev[nm].ppVol,ppAmtEx:rec.ppAmtEx-prev[nm].ppAmtEx,djiAmt:rec.djiAmt-prev[nm].djiAmt};}
+    else{d={hostVol:0,hostAmt:0,ppVol:0,ppAmtEx:0,djiAmt:0};}
+    all().filter(p=>p.name===nm).forEach(p=>{
+      p.monthHostVol=rec.hostVol; p.monthHostAmt=rec.hostAmt;
+      p.monthPPVol=rec.ppVol; p.monthPPAmtEx=rec.ppAmtEx; p.monthPPAmt=rec.ppAmtEx+rec.djiAmt;
+      p.ppPriceEx=rec.ppVol>0?rec.ppAmtEx/rec.ppVol:0;
+      p.audioVol=rec.audio;
+      p.yHostVol=d.hostVol; p.yPPVol=d.ppVol; p.yPPAmtEx=d.ppAmtEx;
+      if(p.camp==='pioneer'){p.totalSales=p.monthPPAmt;}
+      if(prev[nm]&&d.hostVol>0&&d.ppVol===0){
+        p.nakedCount=(p.nakedCount||0)+1;
+        if(!nakedNew.find(x=>x.name===nm))nakedNew.push({name:nm,camp:p.camp});
+      }
+    });
+  });
+  state.prevBI=c.newSnap; state.lastImportDate=todayStr(); state.nakedToday=nakedNew; state.reviewedToday=[];
+  return {matched:c.matched,unmatched:c.unmatched,total:c.total,naked:nakedNew.length};
+}
+
+function doBIImport(){
+  if(biParsed&&biParsed.rows){
+    const res=applyBI(biParsed.rows);
+    save();renderAll();closeModal('biModal');biParsed=null;
+    toast('已更新两个训练营 · 匹配'+res.matched+'人 · 裸机'+res.naked+'人', res.unmatched.length?'':'ok');
+    if(res.unmatched.length)console.warn('BI未匹配：',res.unmatched);
+    return;
+  }
+  // 粘贴模式（仅更新销售额，不含主机/客单价/裸机）
+  const txt=$('biText').value.trim();
+  if(!txt){toast('请上传文件或粘贴数据','err');return;}
+  const map={};
+  txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean).forEach(line=>{
+    const parts=line.split(/[,，\t\s]+/).filter(Boolean);
+    if(parts.length<2)return;
+    const name=parts[0]; const amt=parseFloat(parts[parts.length-1].replace(/[¥,元]/g,''));
+    if(!isNaN(amt))map[name]=amt;
+  });
+  if(!Object.keys(map).length){toast('未解析到有效数据','err');return;}
+  let ok=0;
+  all().forEach(p=>{if(map[p.name]!=null){if(p.camp==='pioneer'){p.totalSales=map[p.name];}else{p.monthPPAmt=map[p.name];p.monthPPAmtEx=map[p.name];}ok++;}});
+  save();renderAll();closeModal('biModal');biParsed=null;
+  toast('已更新 '+ok+' 人销售额（粘贴模式不含主机/客单价）','ok');
+}
+
+/* ===================== 解析器（零依赖） ===================== */
+async function parseTableFile(file){
+  const nm=file.name.toLowerCase();
+  if(nm.endsWith('.csv')){const text=await file.text();const out=[];text.split(/\r?\n/).forEach(l=>{if(l.trim()==='')return;out.push(l.split(/[,，\t]/));});return out;}
+  if(nm.endsWith('.xls'))throw new Error('旧版 .xls 不支持，请另存为 .xlsx 或 .csv');
+  const buf=new Uint8Array(await file.arrayBuffer());
+  return await parseXLSX(buf);
+}
+async function parseXLSX(buf){
+  const dv=new DataView(buf.buffer,buf.byteOffset,buf.byteLength);
+  let eocd=-1;for(let i=buf.length-22;i>=0;i--){if(dv.getUint32(i,true)===0x06054b50){eocd=i;break;}}
+  if(eocd<0)throw new Error('不是有效的 xlsx 文件');
+  const cdOff=dv.getUint32(eocd+16,true);
+  const entries=[];let off=cdOff;
+  while(dv.getUint32(off,true)===0x02014b50){
+    const method=dv.getUint16(off+10,true);
+    const compSize=dv.getUint32(off+20,true);
+    const fnLen=dv.getUint16(off+28,true);
+    const extraLen=dv.getUint16(off+30,true);
+    const commLen=dv.getUint16(off+32,true);
+    const lho=dv.getUint32(off+42,true);
+    const name=new TextDecoder().decode(buf.subarray(off+46,off+46+fnLen));
+    const lfnLen=dv.getUint16(lho+26,true);
+    const lextraLen=dv.getUint16(lho+28,true);
+    const dataStart=lho+30+lfnLen+lextraLen;
+    entries.push({name,method,compSize,dataStart});off+=46+fnLen+extraLen+commLen;
+  }
+  const sheet=entries.find(h=>/worksheets\/sheet\d+\.xml$/.test(h.name))||entries.find(h=>h.name.includes('worksheets')&&h.name.endsWith('.xml'));
+  const sh=entries.find(h=>h.name==='xl/sharedStrings.xml');
+  if(!sheet)throw new Error('xlsx 中未找到工作表');
+  const sheetXml=dec(await unzip(buf,sheet));
+  const shared=sh?parseShared(dec(await unzip(buf,sh))):[];
+  return parseSheet(sheetXml,shared);
+}
+async function unzip(buf,e){
+  const data=buf.subarray(e.dataStart,e.dataStart+e.compSize);
+  if(e.method===0)return data;
+  if(e.method===8)return await inflateRaw(data);
+  throw new Error('不支持的压缩方式 '+e.method);
+}
+function inflateRaw(bytes){
+  if(typeof DecompressionStream==='undefined')throw new Error('当前浏览器不支持解压，请用新版 Safari/Chrome，或导出为 .csv');
+  const ds=new DecompressionStream('deflate-raw');
+  const w=ds.writable.getWriter();w.write(bytes);w.close();
+  const r=ds.readable.getReader();const chunks=[];
+  return new Promise((res,rej)=>{(async()=>{let d=false;try{while(!d){const {value,done}=await r.read();if(value)chunks.push(value);d=done;}}catch(err){rej(err);return;}
+    let len=chunks.reduce((s,c)=>s+c.length,0);const out=new Uint8Array(len);let o=0;for(const c of chunks){out.set(c,o);o+=c.length;}res(out);})();});
+}
+function dec(u8){return new TextDecoder().decode(u8);}
+function colIndex(ref){const L=ref.match(/^[A-Z]+/)[0];let n=0;for(const ch of L)n=n*26+(ch.charCodeAt(0)-64);return n-1;}
+function parseShared(xml){const arr=[];const re=/<si>([\s\S]*?)<\/si>/g;let m;
+  while((m=re.exec(xml))){arr.push((m[1].match(/<t[^>]*>([\s\S]*?)<\/t>/g)||[]).map(s=>(s.match(/<t[^>]*>([\s\S]*?)<\/t>/)||[])[1]||'').join(''));}return arr;}
+function parseCells(rowXml,shared){const map={};const cRe=/<c\b([^>]*)>([\s\S]*?)<\/c>/g;let m;
+  while((m=cRe.exec(rowXml))){const attrs=m[1],inner=m[2];const r=(attrs.match(/\br="([^"]+)"/)||[])[1];if(!r)continue;
+    const t=(attrs.match(/\bt="([^"]+)"/)||[])[1];let val='';
+    if(t==='inlineStr'){val=(inner.match(/<t[^>]*>([\s\S]*?)<\/t>/)||[])[1]||'';}
+    else if(t==='s'){const idx=parseInt((inner.match(/<v>([^<]*)<\/v>/)||[])[1]||'0',10);val=shared[idx]||'';}
+    else{val=(inner.match(/<v>([^<]*)<\/v>/)||[])[1]||'';}
+    map[colIndex(r)]=val;}
+  const max=Object.keys(map).length?Math.max(...Object.keys(map).map(Number)):-1;const arr=[];for(let i=0;i<=max;i++)arr.push(map[i]||'');return arr;}
+function parseSheet(xml,shared){const rows=[];const rowRe=/<row\b[^>]*>([\s\S]*?)<\/row>/g;let m;
+  while((m=rowRe.exec(xml))){rows.push(parseCells(m[1],shared));}return rows;}
+
+/* ===================== 复盘 ===================== */
+function markReviewed(name){
+  if(!state.reviewedToday.includes(name))state.reviewedToday.push(name);
+  save();renderNaked();toast(name+' 已标记复盘','ok');
+}
+
+/* ===================== 备份/恢复 ===================== */
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='3pp训练营数据_'+todayStr()+'.json';a.click();
+  toast('已导出 JSON 备份','ok');
+}
+function importJSON(){$('importFile').click();}
+function importFilePicked(e){
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{try{const o=JSON.parse(rd.result);if(!o.pioneers)throw new Error('格式不正确');
+    state=Object.assign({pioneers:[],boosts:[],records:[],prevBI:{},nakedToday:[],reviewedToday:[],lastImportDate:''},o);
+    save();renderAll();toast('已恢复数据','ok');}catch(err){toast('恢复失败：'+err.message,'err');}};
+  rd.readAsText(f);e.target.value='';
+}
+function exportCSV(){
+  let csv='类型,姓名,门店,总积分,总销售额,主机销量,月度3PP销量,月度3PP销售额,月度3PP客单价,音频销量,裸机次数\n';
+  all().forEach(p=>{
+    const price=p.monthHostVol>0?Math.round(p.monthPPAmtEx/p.monthHostVol*100)/100:'';
+    csv+=`${p.camp==='pioneer'?'先锋小队':'专项提升'},${p.name},${p.store},${fmt(p.totalScore)},${fmt(p.totalSales||0)},${p.monthHostVol||0},${p.monthPPVol||0},${fmt(p.monthPPAmt||0)},${price},${p.audioVol||0},${p.nakedCount||0}\n`;
+  });
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='3pp训练营汇总_'+todayStr()+'.csv';a.click();
+  toast('已导出 CSV','ok');
+}
+function clearAll(){
+  if(!confirm('确定清空全部数据？此操作不可恢复，建议先导出备份。'))return;
+  if(!confirm('再次确认：所有积分、销售额、裸机记录都将清空，恢复初始名单。'))return;
+  localStorage.removeItem(LS_KEY);seedData();save();renderAll();
+  toast('已清空并恢复初始名单','ok');
+}
+
+/* ===================== 切换 ===================== */
+function switchTab(p){
+  currentTab=p;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.p===p));
+  document.querySelectorAll('.panel').forEach(pl=>pl.classList.remove('active'));
+  $('panel-'+p).classList.add('active');
+  renderBanner();
+  if(p==='boost')renderBoost();
+  if(p==='naked')renderNaked();
+}
+function switchPio(k){
+  pioSort=k;
+  document.querySelectorAll('#pioSeg button').forEach(b=>b.classList.toggle('on',b.dataset.k===k));
+  renderPioneer();
+}
+
+/* ===================== 总渲染 ===================== */
+function renderAll(){
+  renderBanner();renderPioneer();renderBoost();renderEntryHistory();renderNaked();
+}
+
+/* ===================== 初始化 ===================== */
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.search-box')){$('searchResults').classList.remove('show');}
+});
+$('biModal').addEventListener('click',e=>{if(e.target.id==='biModal')closeModal('biModal');});
+$('dataModal').addEventListener('click',e=>{if(e.target.id==='dataModal')closeModal('dataModal');});
+
+(async function init(){
+  const unlocked=await restoreSession();
+  if(!unlocked)return;
+  const loaded=await loadState();
+  if(!loaded)return;
+  renderAll();
+  setupRealtime();
+})();
+</script>
+</body>
+</html>
