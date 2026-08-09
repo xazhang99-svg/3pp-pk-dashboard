@@ -492,8 +492,9 @@
 const SB_URL='https://tbinpnbpmcyliybknqit.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRiaW5wbmJwbWN5bGl5YmtucWl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYyNjg5MTEsImV4cCI6MjEwMTg0NDkxMX0.SI9FQ91KJ7gfyjss4uMbqqRLTBYMjTYE0gxTq_DgybE';
 const SYNC_KEY='shared';
+const IS_PREVIEW=new URLSearchParams(location.search).get('preview')==='1';
 const sbClient=(SB_URL&&SB_URL.indexOf('YOUR_')!==0&&SB_KEY&&SB_KEY.indexOf('YOUR_')!==0&&typeof window!=='undefined'&&window.supabase)?window.supabase.createClient(SB_URL,SB_KEY):null;
-function sbReady(){return !!sbClient;}
+function sbReady(){return !!sbClient&&!IS_PREVIEW;}
 function mergeState(o){return Object.assign({pioneers:[],boosts:[],records:[],prevBI:{},nakedToday:[],reviewedToday:[],lastImportDate:''},o||{});}
 let authUser=null;
 let realtimeChannel=null;
@@ -546,7 +547,25 @@ function seedData(){
   state.boosts=PRESET_BOOST.map(mkBoost);
   state.records=[]; state.prevBI={}; state.nakedToday=[]; state.reviewedToday=[]; state.lastImportDate='';
 }
+function seedPreviewData(){
+  const pioneers=[
+    ['示例顾问 A','中心旗舰店',4.2,27671,18,7],['示例顾问 B','城北体验店',3.6,23850,16,5],
+    ['示例顾问 C','滨江零售店',3.0,21640,14,6],['示例顾问 D','万象汇门店',2.4,18920,13,4],
+    ['示例顾问 E','时代广场店',2.1,16480,11,3],['示例顾问 F','大学城门店',1.8,14780,10,4],
+    ['示例顾问 G','湖滨体验店',1.5,12650,9,2],['示例顾问 H','高新零售店',1.2,9850,8,2]
+  ];
+  state.pioneers=pioneers.map(x=>Object.assign(mkPioneer({name:x[0],store:x[1]}),{totalScore:x[2],totalSales:x[3],monthHostVol:x[4],audioVol:x[5]}));
+  const boosts=[
+    ['提升学员 A','中心旗舰店',22,32680,8,0],['提升学员 B','滨江零售店',18,25420,6,1],
+    ['提升学员 C','城北体验店',15,19650,5,2],['提升学员 D','大学城门店',12,14360,3,3]
+  ];
+  state.boosts=boosts.map(x=>Object.assign(mkBoost({name:x[0],store:x[1]}),{monthHostVol:x[2],monthPPAmtEx:x[3],monthPPAmt:x[3],audioVol:x[4],nakedCount:x[5],yHostVol:2,yPPAmtEx:Math.round(x[3]/x[2]*2)}));
+  state.records=[{id:'demo1',date:todayStr(),name:'示例顾问 A',score:1.2,note:'示例积分记录'}];
+  state.prevBI={};state.nakedToday=[{name:'提升学员 C',camp:'boost'},{name:'提升学员 D',camp:'boost'}];
+  state.reviewedToday=['提升学员 C'];state.lastImportDate=todayStr();
+}
 function save(){
+  if(IS_PREVIEW){toast('设计预览模式不会保存或上传数据');return;}
   // 云端模式不在浏览器缓存业务数据，避免退出登录后仍从本机读取人员信息。
   if(sbReady()){pushCloud();return;}
   try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){toast('保存失败：'+e.message,'err');}
@@ -737,7 +756,7 @@ function renderBanner(){
   }
   const bMode=$('bMode');
   if(bMode){
-    bMode.innerHTML = sbReady()&&authUser? '<span class="dot"></span>安全云同步已开启' : '<span class="dot off"></span>本地模式（未开启云同步）';
+    bMode.innerHTML = IS_PREVIEW? '<span class="dot"></span>设计预览 · 示例数据' : sbReady()&&authUser? '<span class="dot"></span>安全云同步已开启' : '<span class="dot off"></span>本地模式（未开启云同步）';
   }
   $('bannerRow').innerHTML=html;
 }
@@ -1150,6 +1169,7 @@ $('biModal').addEventListener('click',e=>{if(e.target.id==='biModal')closeModal(
 $('dataModal').addEventListener('click',e=>{if(e.target.id==='dataModal')closeModal('dataModal');});
 
 (async function init(){
+  if(IS_PREVIEW){setAuthUI(false);seedPreviewData();renderAll();return;}
   const unlocked=await restoreSession();
   if(!unlocked)return;
   const loaded=await loadState();
