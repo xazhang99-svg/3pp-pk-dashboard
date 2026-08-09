@@ -258,6 +258,7 @@
   .auth-card h2{margin:18px 0 6px;font-size:22px;color:var(--ink);}
   .auth-card p{margin:0 0 22px;color:var(--sub);font-size:13px;line-height:1.7;}
   .auth-field{margin-bottom:13px;}
+  .auth-field[hidden]{display:none!important;}
   .auth-field label{display:block;margin:0 0 6px;font-size:12px;font-weight:700;color:#707b8d;}
   .auth-error{min-height:20px;margin:8px 0 4px;color:var(--red);font-size:12px;line-height:1.5;}
   .auth-note{margin-top:16px!important;text-align:center;font-size:11px!important;}
@@ -298,21 +299,25 @@
 <div class="bg-blobs" aria-hidden="true"><i></i></div>
 
 <div class="auth-gate" id="authGate" role="dialog" aria-modal="true" aria-labelledby="authTitle">
-  <form class="auth-card" onsubmit="signIn(event)">
+  <form class="auth-card" onsubmit="submitAuth(event)">
     <div class="auth-mark">✦</div>
     <h2 id="authTitle">进入 3PP 训练营作战台</h2>
-    <p>工作台数据已启用访问保护。请使用管理员创建的账号登录，未登录用户无法读取或修改共享数据。</p>
+    <p id="authIntro">工作台数据已启用访问保护。请使用管理员创建的账号登录，未登录用户无法读取或修改共享数据。</p>
     <div class="auth-field">
       <label for="authEmail">登录邮箱</label>
       <input class="input" id="authEmail" type="email" autocomplete="username" required placeholder="name@example.com">
     </div>
     <div class="auth-field">
-      <label for="authPassword">密码</label>
+      <label for="authPassword" id="authPasswordLabel">密码</label>
       <input class="input" id="authPassword" type="password" autocomplete="current-password" required minlength="8" placeholder="请输入密码">
+    </div>
+    <div class="auth-field" id="authConfirmField" hidden>
+      <label for="authPasswordConfirm">确认新密码</label>
+      <input class="input" id="authPasswordConfirm" type="password" autocomplete="new-password" minlength="8" placeholder="请再次输入新密码">
     </div>
     <div class="auth-error" id="authError" aria-live="polite"></div>
     <button class="btn primary block" id="authSubmit" type="submit">安全登录</button>
-    <p class="auth-note">不开放网页注册 · 账号由项目管理员统一创建</p>
+    <p class="auth-note" id="authNote">不开放网页注册 · 账号由项目管理员统一创建</p>
   </form>
 </div>
 
@@ -492,6 +497,8 @@ function sbReady(){return !!sbClient;}
 function mergeState(o){return Object.assign({pioneers:[],boosts:[],records:[],prevBI:{},nakedToday:[],reviewedToday:[],lastImportDate:''},o||{});}
 let authUser=null;
 let realtimeChannel=null;
+let authMode='signin';
+let inviteIntent=false;
 
 /* ===================== 状态 ===================== */
 const LS_KEY='wb_3pp_pk_v2';
@@ -584,9 +591,51 @@ function setAuthUI(locked,message){
   const email=$('userEmail');if(email)email.textContent=authUser&&authUser.email?authUser.email:'';
   if(locked)setTimeout(()=>{$('authEmail')&&$('authEmail').focus();},50);
 }
-async function signIn(event){
+function setAuthMode(mode,email){
+  authMode=mode==='invite'?'invite':'signin';
+  const invite=authMode==='invite';
+  $('authTitle').textContent=invite?'设置工作台登录密码':'进入 3PP 训练营作战台';
+  $('authIntro').textContent=invite?'邀请已验证。请为此账号设置新密码，完成后将自动进入工作台。':'工作台数据已启用访问保护。请使用管理员创建的账号登录，未登录用户无法读取或修改共享数据。';
+  $('authPasswordLabel').textContent=invite?'设置新密码':'密码';
+  $('authPassword').autocomplete=invite?'new-password':'current-password';
+  $('authPassword').placeholder=invite?'至少 8 位字符':'请输入密码';
+  $('authConfirmField').hidden=!invite;
+  $('authPasswordConfirm').required=invite;
+  $('authSubmit').textContent=invite?'设置密码并进入':'安全登录';
+  $('authNote').textContent=invite?'密码仅用于登录本工作台，请妥善保管':'不开放网页注册 · 账号由项目管理员统一创建';
+  if(email){$('authEmail').value=email;$('authEmail').readOnly=invite;}
+  else $('authEmail').readOnly=false;
+}
+function needsPasswordSetup(user){
+  return !!(user&&(inviteIntent||(user.invited_at&&!(user.user_metadata&&user.user_metadata.password_initialized===true))));
+}
+async function finishInvite(){
+  if(!authUser)throw new Error('邀请会话已失效，请使用邮件中的最新邀请链接');
+  const password=$('authPassword').value||'';
+  const confirm=$('authPasswordConfirm').value||'';
+  if(password.length<8)throw new Error('新密码至少需要 8 位字符');
+  if(password!==confirm)throw new Error('两次输入的密码不一致');
+  const {data,error}=await sbClient.auth.updateUser({password,data:{password_initialized:true}});
+  if(error)throw error;
+  authUser=data&&data.user?data.user:authUser;
+  inviteIntent=false;
+  history.replaceState({},document.title,location.pathname);
+  const ok=await loadState();
+  if(!ok)throw new Error('密码已设置，但账号暂未获得数据访问权限');
+  setAuthMode('signin');setAuthUI(false);
+  $('authPassword').value='';$('authPasswordConfirm').value='';
+  renderAll();setupRealtime();toast('密码设置成功','ok');
+}
+async function submitAuth(event){
   if(event)event.preventDefault();
   if(!sbReady()){setAuthUI(true,'云端服务未配置，请联系管理员');return;}
+  if(authMode==='invite'){
+    const btn=$('authSubmit');btn.disabled=true;btn.textContent='正在设置…';$('authError').textContent='';
+    try{await finishInvite();}
+    catch(e){setAuthUI(true,e&&e.message?e.message:'密码设置失败，请重新打开最新邀请链接');}
+    finally{btn.disabled=false;if(authMode==='invite')btn.textContent='设置密码并进入';}
+    return;
+  }
   const email=($('authEmail').value||'').trim();
   const password=$('authPassword').value||'';
   const btn=$('authSubmit');btn.disabled=true;btn.textContent='正在登录…';
@@ -610,16 +659,40 @@ async function signOut(){
   try{await sbClient.auth.signOut();}catch(e){}
   authUser=null;state=mergeState();
   if(realtimeChannel){try{await sbClient.removeChannel(realtimeChannel);}catch(e){}realtimeChannel=null;}
-  setAuthUI(true,'');
+  setAuthMode('signin');setAuthUI(true,'');
+}
+function authCallbackInfo(){
+  const query=new URLSearchParams(location.search);
+  const hash=new URLSearchParams(location.hash.replace(/^#/,''));
+  return {code:query.get('code')||'',accessToken:hash.get('access_token')||'',refreshToken:hash.get('refresh_token')||'',type:query.get('type')||hash.get('type')||''};
 }
 async function restoreSession(){
   if(!sbReady()){setAuthUI(false);return true;}
   try{localStorage.removeItem(LS_KEY);}catch(e){}
   try{
-    const {data,error}=await sbClient.auth.getSession();
+    const callback=authCallbackInfo();
+    inviteIntent=callback.type==='invite'||!!callback.code||!!callback.accessToken;
+    let {data,error}=await sbClient.auth.getSession();
     if(error)throw error;
+    if(!data.session&&callback.code){
+      const exchanged=await sbClient.auth.exchangeCodeForSession(callback.code);
+      if(exchanged.error)throw exchanged.error;
+      data=exchanged.data;
+    }else if(!data.session&&callback.accessToken&&callback.refreshToken){
+      const restored=await sbClient.auth.setSession({access_token:callback.accessToken,refresh_token:callback.refreshToken});
+      if(restored.error)throw restored.error;
+      data=restored.data;
+    }
     authUser=data.session&&data.session.user?data.session.user:null;
-    if(!authUser){setAuthUI(true,'');return false;}
+    if(!authUser){
+      setAuthMode('signin');
+      setAuthUI(true,inviteIntent?'邀请链接无效或已过期，请联系管理员重新发送':'');
+      return false;
+    }
+    if(needsPasswordSetup(authUser)){
+      setAuthMode('invite',authUser.email||'');setAuthUI(true,'');return false;
+    }
+    setAuthMode('signin');
     setAuthUI(false);return true;
   }catch(e){setAuthUI(true,'无法验证登录状态，请重新登录');return false;}
 }
