@@ -82,8 +82,8 @@
   .card::before{content:""; position:absolute; left:0; right:0; top:0; height:42%;
     background:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,0)); pointer-events:none; border-radius:20px 20px 0 0;}
   .card:hover{box-shadow:var(--glass-shadow-lg);}
-  .card h3{margin:0 0 14px; font-size:14px; display:flex; align-items:center; gap:8px; color:var(--ink); font-weight:700;}
-  .hint{font-size:12px; color:var(--sub); line-height:1.75;}
+  .card h3{margin:0 0 14px; font-size:15px; display:flex; align-items:center; gap:8px; color:#424b5b; font-weight:800;}
+  .hint{font-size:12px; color:#758094; line-height:1.75; font-weight:500;}
   .card h3 svg{flex:none;}
 
   /* ── Stats grid (inside cards) ── */
@@ -245,6 +245,29 @@
   .rk-stat .lbl{font-size:10px; color:var(--sub); margin-top:1px; white-space:nowrap; font-weight:500;}
   .rk-val-score{color:#566071;} .rk-val-sales{color:#697486;} .rk-val-host{color:#7e899a;} .rk-val-audio{color:#98a2b2;}
 
+  /* ── 专项提升：姓名与完整门店优先的卡片排行 ── */
+  .boost-list{display:flex; flex-direction:column; gap:12px;}
+  .boost-card{background:rgba(255,255,255,.67); border:1px solid var(--glass-border); border-radius:18px;
+    padding:16px 18px; display:grid; grid-template-columns:minmax(210px,1.15fr) minmax(430px,2fr); gap:18px;
+    align-items:center; box-shadow:var(--glass-shadow); position:relative; overflow:hidden;}
+  .boost-card::before{content:""; position:absolute; left:0; top:0; bottom:0; width:4px;
+    background:linear-gradient(180deg,rgba(255,156,164,.8),rgba(229,63,69,.62));}
+  .boost-person{display:grid; grid-template-columns:36px minmax(0,1fr); gap:12px; align-items:start; min-width:0;}
+  .boost-identity{min-width:0;}
+  .boost-name-row{display:flex; align-items:center; flex-wrap:wrap; gap:7px;}
+  .boost-name{font-size:16px; line-height:1.3; font-weight:800; color:#465061;}
+  .boost-store{margin-top:4px; font-size:12.5px; line-height:1.5; color:#737e91; font-weight:600;
+    white-space:normal; overflow-wrap:anywhere;}
+  .boost-metrics{display:grid; grid-template-columns:repeat(5,minmax(72px,1fr)); gap:8px;}
+  .boost-metric{padding:9px 7px; border-radius:12px; background:rgba(255,255,255,.48); text-align:center; min-width:0;}
+  .boost-metric .v{font-size:14px; line-height:1.25; font-weight:800; color:#556072; white-space:nowrap;}
+  .boost-metric.sales .v{color:var(--blue-d);}
+  .boost-metric .k{font-size:9.5px; line-height:1.35; color:#8490a2; margin-top:4px; font-weight:600;}
+  .boost-head{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;}
+  .boost-head h3{margin:0;}
+  .boost-seg{margin:0; flex:none;}
+  .boost-seg button{padding:6px 13px; font-size:12px;}
+
   /* ── 登录保护 ── */
   .auth-gate{position:fixed; inset:0; z-index:120; display:none; align-items:center; justify-content:center; padding:24px;
     background:linear-gradient(145deg,#f9d9de 0%,#f8e8eb 44%,#fff8f8 100%);}
@@ -280,6 +303,18 @@
     .rk-stat .val{font-size:14px;}
     .rk-stat .lbl{font-size:9px;}
     .rk-tag{padding:1px 6px; font-size:10px;}
+    .boost-card{grid-template-columns:1fr; padding:14px; gap:12px;}
+    .boost-person{grid-template-columns:30px minmax(0,1fr); gap:10px;}
+    .boost-name{font-size:15px;}
+    .boost-store{font-size:12px; line-height:1.55;}
+    .boost-metrics{grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px;}
+    .boost-metric{padding:9px 6px; text-align:left;}
+    .boost-metric .v{font-size:13px;}
+    .boost-metric .k{font-size:9.5px;}
+    .boost-metric:last-child{grid-column:span 2;}
+    .boost-head{align-items:flex-start;}
+    .boost-head h3{padding-top:7px;}
+    .boost-seg button{padding:6px 10px;}
   }
 
   @media(min-width:720px){ .modal{align-items:center;} .modal .box{border-radius:24px;} }
@@ -365,11 +400,15 @@
   <!-- ============ 专项提升 ============ -->
   <div class="panel" id="panel-boost">
     <div class="card">
-      <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>专项提升 · 数据榜</h3>
-      <div class="hint" style="margin-bottom:12px">指标均来自 BI 上传（含音频销量）；裸机≥3次标红需提交视频演练。</div>
-      <div style="overflow-x:auto">
-        <table id="boostTable"></table>
+      <div class="boost-head">
+        <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>专项提升 · 数据榜</h3>
+        <div class="seg boost-seg" id="boostSeg">
+          <button class="on" data-k="person" onclick="switchBoostView('person')">个人</button>
+          <button data-k="store" onclick="switchBoostView('store')">门店</button>
+        </div>
       </div>
+      <div class="hint" style="margin-bottom:12px">指标均来自 BI 上传（含音频销量）；裸机≥3次标红需提交视频演练。</div>
+      <div class="boost-list" id="boostTable"></div>
     </div>
   </div>
 
@@ -531,6 +570,7 @@ function daysLeft(){const t=new Date();t.setHours(0,0,0,0);const e=new Date(EVEN
 function all(){return [...state.pioneers,...state.boosts];}
 function findP(id){return all().find(p=>p.id===id);}
 let currentTab='pioneer';
+let boostView='person';
 
 /* ===================== 初始化 ===================== */
 function mkPioneer(p){return {id:'P'+uid(),name:p.name,store:p.store||'',camp:'pioneer',
@@ -828,26 +868,51 @@ function renderPrize(list){
 
 /* ===================== 渲染：专项提升 ===================== */
 function renderBoost(){
-  const list=state.boosts.slice().sort((a,b)=> (b.monthPPAmtEx||0)-(a.monthPPAmtEx||0));
-  let html='<thead><tr><th>排名</th><th>姓名/门店</th><th>昨日主机销量</th><th>昨日3PP客单价<br>(不含大疆)</th><th>月度3PP销售额<br>(不含大疆)</th><th>月度3PP客单价<br>(不含大疆)</th><th>月度音频<br>销量</th><th>标记</th></tr></thead><tbody>';
+  let list;
+  if(boostView==='store'){
+    const grouped={};
+    state.boosts.forEach(p=>{
+      const store=(p.store||'未填写门店').trim()||'未填写门店';
+      if(!grouped[store])grouped[store]={name:store,store:'',memberCount:0,yHostVol:0,yPPAmtEx:0,monthHostVol:0,monthPPAmtEx:0,audioVol:0,nakedCount:0};
+      const g=grouped[store];
+      g.memberCount+=1;g.yHostVol+=Number(p.yHostVol)||0;g.yPPAmtEx+=Number(p.yPPAmtEx)||0;
+      g.monthHostVol+=Number(p.monthHostVol)||0;g.monthPPAmtEx+=Number(p.monthPPAmtEx)||0;
+      g.audioVol+=Number(p.audioVol)||0;g.nakedCount+=Number(p.nakedCount)||0;
+    });
+    list=Object.values(grouped).sort((a,b)=>(b.monthPPAmtEx||0)-(a.monthPPAmtEx||0));
+  }else{
+    list=state.boosts.slice().sort((a,b)=> (b.monthPPAmtEx||0)-(a.monthPPAmtEx||0));
+  }
+  let html='';
   list.forEach((p,i)=>{
-    const rk=i+1; const medal = rk<=3?`<span class="medal m${rk}">${rk}</span>`:`<span class="rank">${rk}</span>`;
+    const rk=i+1; const medal = rk<=3?`<span class="medal m${rk}">${rk}</span>`:`<span class="rk-badge rk-norm">${rk}</span>`;
     const yPrice = p.yHostVol>0 ? money(p.yPPAmtEx/p.yHostVol) : '—';
     const mPrice = p.monthHostVol>0 ? money(p.monthPPAmtEx/p.monthHostVol) : '—';
     let tag='';
     if(p.nakedCount>=3) tag='<span class="pill video">视频演练</span>';
     else if(p.nakedCount>0) tag=`<span class="pill nake">裸机×${p.nakedCount}</span>`;
-    html+=`<tr><td>${medal}</td>`+
-      `<td><div class="nm">${esc(p.name)}</div><div class="st">${esc(p.store)}</div></td>`+
-      `<td>${p.yHostVol||0}</td>`+
-      `<td>${yPrice}</td>`+
-      `<td>${money(p.monthPPAmtEx||0)}</td>`+
-      `<td>${mPrice}</td>`+
-      `<td><b class="audnum">${p.audioVol||0}</b></td>`+
-      `<td>${tag}</td></tr>`;
+    const subline=boostView==='store'?`${p.memberCount} 位咨询师`:esc(p.store)||'未填写门店';
+    html+=`<div class="boost-card">
+      <div class="boost-person">${medal}<div class="boost-identity">
+        <div class="boost-name-row"><span class="boost-name">${esc(p.name)}</span>${tag}</div>
+        <div class="boost-store">${subline}</div>
+      </div></div>
+      <div class="boost-metrics">
+        <div class="boost-metric"><div class="v">${p.yHostVol||0}</div><div class="k">昨日主机销量</div></div>
+        <div class="boost-metric"><div class="v">${yPrice}</div><div class="k">昨日3PP客单价<br>不含大疆</div></div>
+        <div class="boost-metric sales"><div class="v">${money(p.monthPPAmtEx||0)}</div><div class="k">月度3PP销售额<br>不含大疆</div></div>
+        <div class="boost-metric"><div class="v">${mPrice}</div><div class="k">月度3PP客单价<br>不含大疆</div></div>
+        <div class="boost-metric"><div class="v">${p.audioVol||0}</div><div class="k">月度音频销量</div></div>
+      </div>
+    </div>`;
   });
-  html+='</tbody>';
   $('boostTable').innerHTML=html;
+}
+
+function switchBoostView(view){
+  boostView=view==='store'?'store':'person';
+  document.querySelectorAll('#boostSeg button').forEach(b=>b.classList.toggle('on',b.dataset.k===boostView));
+  renderBoost();
 }
 
 /* ===================== 渲染：裸机复盘 ===================== */
