@@ -212,7 +212,8 @@
   /* ── Card-style Rank List（先锋PK / 专项提升 通用） ── */
   .rank-list{display:flex; flex-direction:column; gap:12px; margin-top:4px;}
   .rank-card{background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:18px;
-    padding:16px 18px; display:flex; align-items:flex-start; gap:14px;
+    padding:16px 18px; display:grid; grid-template-columns:36px minmax(180px,1fr) auto;
+    grid-template-areas:"badge body stats" ". progress progress"; align-items:start; gap:8px 14px;
     box-shadow:var(--glass-shadow); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
     transition:transform .15s ease, box-shadow .15s ease; position:relative; overflow:hidden;}
   .rank-card::before{content:""; position:absolute; left:0; top:0; bottom:0; width:4px;
@@ -227,10 +228,13 @@
   .rk-silver{background:linear-gradient(135deg,#e7edf5,#c6d0dd); color:#fff;}
   .rk-bronze{background:linear-gradient(135deg,#efb27f,#d98a58); color:#fff;}
   .rk-norm{background:transparent; color:#929cad; box-shadow:none;}
-  /* 中间：姓名 + 门店 + 进度条 */
-  .rk-body{flex:1; min-width:0; display:flex; flex-direction:column; gap:5px;}
+  .rank-card>.rk-badge{grid-area:badge;}
+  /* 中间：姓名 + 门店 */
+  .rk-body{grid-area:body; min-width:0; display:flex; flex-direction:column; gap:5px;}
   .rk-name{font-size:17px; font-weight:800; line-height:1.25; color:var(--ink);}
-  .rk-store{font-size:12.5px; color:var(--sub); line-height:1.3; font-weight:500;}
+  .rk-store{font-size:12.5px; color:var(--sub); line-height:1.3; font-weight:500;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .rk-progress{grid-area:progress; min-width:0;}
   .rk-bar-row{display:flex; align-items:center; gap:10px;}
   .rk-bar{flex:1; height:10px; background:rgba(229,63,69,.09); border-radius:5px; overflow:hidden; min-width:60px;}
   .rk-bar-fill{height:100%; border-radius:5px; transition:width .4s ease;}
@@ -239,7 +243,7 @@
   .rk-pct{font-size:13px; font-weight:800; color:var(--blue-d); white-space:nowrap; min-width:52px; text-align:right;}
   .rk-checks{font-size:11px; color:var(--sub); white-space:nowrap;}
   /* 右侧：销售数据 */
-  .rk-stats{flex:none; display:flex; gap:8px; align-items:flex-start; flex-shrink:0;}
+  .rk-stats{grid-area:stats; display:flex; gap:8px; align-items:flex-start;}
   .rk-stat{text-align:center; min-width:54px;}
   .rk-stat .val{font-size:16px; font-weight:800; line-height:1.2;}
   .rk-stat .lbl{font-size:10px; color:var(--sub); margin-top:1px; white-space:nowrap; font-weight:500;}
@@ -257,7 +261,7 @@
   .boost-name-row{display:flex; align-items:center; flex-wrap:wrap; gap:7px;}
   .boost-name{font-size:16px; line-height:1.3; font-weight:800; color:#465061;}
   .boost-store{margin-top:4px; font-size:12.5px; line-height:1.5; color:#737e91; font-weight:600;
-    white-space:normal; overflow-wrap:anywhere;}
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .boost-metrics{display:grid; grid-template-columns:repeat(5,minmax(72px,1fr)); gap:8px;}
   .boost-metric{padding:9px 7px; border-radius:12px; background:rgba(255,255,255,.48); text-align:center; min-width:0;}
   .boost-metric .v{font-size:14px; line-height:1.25; font-weight:800; color:#556072; white-space:nowrap;}
@@ -294,27 +298,35 @@
   .rk-tag-warn{background:rgba(190,18,60,.06); color:#be123c; border:1px solid rgba(190,18,60,.16);}
 
   @media(max-width:560px){
-    .rank-card{padding:12px 14px; gap:10px; border-radius:14px;}
+    .rank-list{gap:8px;}
+    .rank-card{padding:11px 12px; border-radius:14px; grid-template-columns:30px minmax(0,1fr);
+      grid-template-areas:"badge body" ". stats" ". progress"; gap:6px 9px;}
     .rk-badge{width:30px; height:30px; font-size:13px;}
     .rk-name{font-size:15px;}
     .rk-store{font-size:11px;}
-    .rk-stats{gap:5px;}
-    .rk-stat{min-width:46px;}
+    .rk-stats{width:100%; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:3px;}
+    .rk-stat{min-width:0;}
     .rk-stat .val{font-size:14px;}
     .rk-stat .lbl{font-size:9px;}
+    .rk-bar-row{gap:6px;}
+    .rk-bar{height:7px; min-width:0;}
+    .rk-pct{font-size:12px; min-width:38px;}
+    .rk-checks{font-size:9.5px; overflow:hidden; text-overflow:ellipsis;}
     .rk-tag{padding:1px 6px; font-size:10px;}
-    .boost-card{grid-template-columns:1fr; padding:14px; gap:12px;}
+    .boost-list{gap:8px;}
+    .boost-card{grid-template-columns:1fr; padding:11px 12px; gap:7px; border-radius:14px;}
     .boost-person{grid-template-columns:30px minmax(0,1fr); gap:10px;}
     .boost-name{font-size:15px;}
-    .boost-store{font-size:12px; line-height:1.55;}
-    .boost-metrics{grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px;}
-    .boost-metric{padding:9px 6px; text-align:left;}
-    .boost-metric .v{font-size:13px;}
-    .boost-metric .k{font-size:9.5px;}
-    .boost-metric:last-child{grid-column:span 2;}
+    .boost-store{font-size:11px; line-height:1.35;}
+    .boost-metrics{grid-template-columns:repeat(5,minmax(0,1fr)); gap:3px;}
+    .boost-metric{padding:5px 2px; text-align:center; border-radius:8px;}
+    .boost-metric .v{font-size:12px;}
+    .boost-metric .k{font-size:7.5px; line-height:1.2; margin-top:2px;}
+    .boost-metric:last-child{grid-column:auto;}
     .boost-head{align-items:flex-start;}
     .boost-head h3{padding-top:7px;}
     .boost-seg button{padding:6px 10px;}
+    .boost-head + .hint{margin-bottom:8px!important; line-height:1.5;}
   }
 
   @media(min-width:720px){ .modal{align-items:center;} .modal .box{border-radius:24px;} }
@@ -537,6 +549,7 @@ function sbReady(){return !!sbClient&&!IS_PREVIEW;}
 function mergeState(o){return Object.assign({pioneers:[],boosts:[],records:[],prevBI:{},nakedToday:[],reviewedToday:[],lastImportDate:''},o||{});}
 let authUser=null;
 let realtimeChannel=null;
+let cloudRefreshBusy=false;
 let authMode='signin';
 let inviteIntent=false;
 
@@ -604,19 +617,21 @@ function seedPreviewData(){
   state.prevBI={};state.nakedToday=[{name:'提升学员 C',camp:'boost'},{name:'提升学员 D',camp:'boost'}];
   state.reviewedToday=['提升学员 C'];state.lastImportDate=todayStr();
 }
-function save(){
-  if(IS_PREVIEW){toast('设计预览模式不会保存或上传数据');return;}
+async function save(){
+  if(IS_PREVIEW){toast('设计预览模式不会保存或上传数据');return false;}
   // 云端模式不在浏览器缓存业务数据，避免退出登录后仍从本机读取人员信息。
-  if(sbReady()){pushCloud();return;}
-  try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){toast('保存失败：'+e.message,'err');}
+  if(sbReady())return await pushCloud();
+  try{localStorage.setItem(LS_KEY,JSON.stringify(state));return true;}
+  catch(e){toast('保存失败：'+e.message,'err');return false;}
 }
 function loadLocal(){try{const s=localStorage.getItem(LS_KEY);if(!s)return false;state=mergeState(JSON.parse(s));return true;}catch(e){return false;}}
 async function pushCloud(){
-  if(!sbReady()||!authUser)return;
+  if(!sbReady()||!authUser)return false;
   try{
     const {error}=await sbClient.from('app_state').upsert({key:SYNC_KEY,value:state,updated_at:new Date().toISOString()});
-    if(error){console.warn('云端同步失败:',error.message);toast('云端保存失败，请检查登录状态','err');}
-  }catch(e){toast('云端保存失败，请稍后重试','err');}
+    if(error){console.warn('云端同步失败:',error.message);toast('页面已更新，但云端保存失败；手机端暂不会同步','err');return false;}
+    return true;
+  }catch(e){toast('页面已更新，但云端保存失败；请稍后重试','err');return false;}
 }
 async function loadState(){
   if(sbReady()&&authUser){
@@ -640,6 +655,15 @@ function setupRealtime(){
         ()=>{loadState().then(()=>{renderAll();toast('数据已同步更新','ok');});})
       .subscribe();
   }catch(e){}
+}
+async function refreshFromCloud(showToast){
+  if(!sbReady()||!authUser||cloudRefreshBusy)return false;
+  cloudRefreshBusy=true;
+  try{
+    const ok=await loadState();
+    if(ok){renderAll();if(showToast)toast('已获取最新云端数据','ok');}
+    return ok;
+  }finally{cloudRefreshBusy=false;}
 }
 
 function setAuthUI(locked,message){
@@ -797,6 +821,10 @@ function renderBanner(){
   const bMode=$('bMode');
   if(bMode){
     bMode.innerHTML = IS_PREVIEW? '<span class="dot"></span>设计预览 · 示例数据' : sbReady()&&authUser? '<span class="dot"></span>安全云同步已开启' : '<span class="dot off"></span>本地模式（未开启云同步）';
+    const canRefresh=!IS_PREVIEW&&sbReady()&&authUser;
+    bMode.title=canRefresh?'点击立即刷新云端数据':'';
+    bMode.style.cursor=canRefresh?'pointer':'default';
+    bMode.onclick=canRefresh?()=>refreshFromCloud(true):null;
   }
   $('bannerRow').innerHTML=html;
 }
@@ -825,17 +853,19 @@ function renderPioneer(){
       <div class="rk-body">
         <div class="rk-name">${esc(p.name)}</div>
         <div class="rk-store">${esc(shortStore(p.store))}</div>
-        <div class="rk-bar-row">
-          <div class="rk-bar"><div class="rk-bar-fill ${barCls}" style="width:${pct}%"></div></div>
-          <span class="rk-pct">${pct}%</span>
-        </div>
-        <div class="rk-checks">距目标 ¥${fmt(targetSales)} · 已达成 ${money(p.totalSales||0)}</div>
       </div>
       <div class="rk-stats">
         <div class="rk-stat"><div class="val rk-val-score">${score}</div><div class="lbl">积分</div></div>
         <div class="rk-stat"><div class="val rk-val-sales">${sales}</div><div class="lbl">销售额</div></div>
         <div class="rk-stat"><div class="val rk-val-host">${host}</div><div class="lbl">主机销量</div></div>
         <div class="rk-stat"><div class="val rk-val-audio">${audio}</div><div class="lbl">音频销量</div></div>
+      </div>
+      <div class="rk-progress">
+        <div class="rk-bar-row">
+          <div class="rk-bar"><div class="rk-bar-fill ${barCls}" style="width:${pct}%"></div></div>
+          <span class="rk-pct">${pct}%</span>
+        </div>
+        <div class="rk-checks">距目标 ¥${fmt(targetSales)} · 已达成 ${money(p.totalSales||0)}</div>
       </div>
     </div>`;
   });
@@ -974,7 +1004,7 @@ function syncExUI(){
 }
 function renderExCase(){/* noop, select drives value */}
 function extraScore(){let s=0;if(exState.combo)s+=1;if(exState.topSales)s+=5;if(exState.caseShare)s+=parseInt($('caseSel').value||'0',10);return s;}
-function submitRecord(){
+async function submitRecord(){
   if(!selPersonId){toast('请先搜索并选择咨询师','err');return;}
   const p=findP(selPersonId); if(!p){toast('人员无效','err');return;}
   if(!curBase){toast('请选择积分档位或自定义','err');return;}
@@ -986,8 +1016,9 @@ function submitRecord(){
   state.records.push(rec);
   p.totalScore=r1(p.totalScore+total);
   if(exState.combo)p.combo++; if(exState.topSales)p.topSales++; if(exState.caseShare)p.caseShare+=parseInt($('caseSel').value||'0',10);
-  save(); renderAll();
-  toast('已为 '+p.name+' 加 '+total+' 分','ok');
+  renderAll();
+  const saved=await save();
+  if(saved)toast('云端保存成功 · 已为 '+p.name+' 加 '+total+' 分','ok');
   $('noteInput').value=''; selPersonId=null; $('entryForm').style.display='none'; $('searchInput').value='';
 }
 function renderEntryHistory(){
@@ -1001,12 +1032,12 @@ function renderEntryHistory(){
   h+='</div>';
   $('entryHistory').innerHTML=h;
 }
-function undoRec(id){
+async function undoRec(id){
   const r=state.records.find(x=>x.id===id); if(!r)return;
   const p=findP(r.consultantId);
   if(p){p.totalScore=r1(p.totalScore-r.totalScore); if(r.extras.combo)p.combo--; if(r.extras.topSales)p.topSales--; if(r.extras.caseShare)p.caseShare-=r.extras.caseShare;}
   state.records=state.records.filter(x=>x.id!==id);
-  save(); renderAll(); toast('已撤销','ok');
+  renderAll();const saved=await save();if(saved)toast('已撤销并同步到云端','ok');
 }
 
 /* ===================== BI 导入 ===================== */
@@ -1078,11 +1109,12 @@ function applyBI(rows){
   return {matched:c.matched,unmatched:c.unmatched,total:c.total,naked:nakedNew.length};
 }
 
-function doBIImport(){
+async function doBIImport(){
   if(biParsed&&biParsed.rows){
     const res=applyBI(biParsed.rows);
-    save();renderAll();closeModal('biModal');biParsed=null;
-    toast('已更新两个训练营 · 匹配'+res.matched+'人 · 裸机'+res.naked+'人', res.unmatched.length?'':'ok');
+    renderAll();closeModal('biModal');biParsed=null;
+    const saved=await save();
+    if(saved)toast('云端保存成功 · 匹配'+res.matched+'人 · 裸机'+res.naked+'人',res.unmatched.length?'':'ok');
     if(res.unmatched.length)console.warn('BI未匹配：',res.unmatched);
     return;
   }
@@ -1099,8 +1131,9 @@ function doBIImport(){
   if(!Object.keys(map).length){toast('未解析到有效数据','err');return;}
   let ok=0;
   all().forEach(p=>{if(map[p.name]!=null){if(p.camp==='pioneer'){p.totalSales=map[p.name];}else{p.monthPPAmt=map[p.name];p.monthPPAmtEx=map[p.name];}ok++;}});
-  save();renderAll();closeModal('biModal');biParsed=null;
-  toast('已更新 '+ok+' 人销售额（粘贴模式不含主机/客单价）','ok');
+  renderAll();closeModal('biModal');biParsed=null;
+  const saved=await save();
+  if(saved)toast('云端保存成功 · 已更新 '+ok+' 人销售额','ok');
 }
 
 /* ===================== 解析器（零依赖） ===================== */
@@ -1167,9 +1200,9 @@ function parseSheet(xml,shared){const rows=[];const rowRe=/<row\b[^>]*>([\s\S]*?
   while((m=rowRe.exec(xml))){rows.push(parseCells(m[1],shared));}return rows;}
 
 /* ===================== 复盘 ===================== */
-function markReviewed(name){
+async function markReviewed(name){
   if(!state.reviewedToday.includes(name))state.reviewedToday.push(name);
-  save();renderNaked();toast(name+' 已标记复盘','ok');
+  renderNaked();const saved=await save();if(saved)toast(name+' 已标记复盘并同步','ok');
 }
 
 /* ===================== 备份/恢复 ===================== */
@@ -1183,9 +1216,9 @@ function importJSON(){$('importFile').click();}
 function importFilePicked(e){
   const f=e.target.files&&e.target.files[0];if(!f)return;
   const rd=new FileReader();
-  rd.onload=()=>{try{const o=JSON.parse(rd.result);if(!o.pioneers)throw new Error('格式不正确');
+  rd.onload=async()=>{try{const o=JSON.parse(rd.result);if(!o.pioneers)throw new Error('格式不正确');
     state=Object.assign({pioneers:[],boosts:[],records:[],prevBI:{},nakedToday:[],reviewedToday:[],lastImportDate:''},o);
-    save();renderAll();toast('已恢复数据','ok');}catch(err){toast('恢复失败：'+err.message,'err');}};
+    renderAll();const saved=await save();if(saved)toast('备份已恢复并保存到云端','ok');}catch(err){toast('恢复失败：'+err.message,'err');}};
   rd.readAsText(f);e.target.value='';
 }
 function exportCSV(){
@@ -1230,6 +1263,8 @@ function renderAll(){
 document.addEventListener('click',e=>{
   if(!e.target.closest('.search-box')){$('searchResults').classList.remove('show');}
 });
+window.addEventListener('focus',()=>refreshFromCloud(false));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshFromCloud(false);});
 $('biModal').addEventListener('click',e=>{if(e.target.id==='biModal')closeModal('biModal');});
 $('dataModal').addEventListener('click',e=>{if(e.target.id==='dataModal')closeModal('dataModal');});
 
