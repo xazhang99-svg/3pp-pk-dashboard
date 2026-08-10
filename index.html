@@ -271,6 +271,14 @@
   .boost-head h3{margin:0;}
   .boost-seg{margin:0; flex:none;}
   .boost-seg button{padding:6px 13px; font-size:12px;}
+  .boost-sort{display:flex; align-items:center; gap:6px; margin:-2px 0 12px; overflow-x:auto; padding:2px 1px 4px;
+    scrollbar-width:none; -webkit-overflow-scrolling:touch;}
+  .boost-sort::-webkit-scrollbar{display:none;}
+  .boost-sort-label{font-size:11px; color:var(--sub); font-weight:700; white-space:nowrap;}
+  .boost-sort button{flex:none; border:1px solid rgba(229,63,69,.12); background:rgba(255,255,255,.56); color:#737e91;
+    padding:6px 10px; border-radius:999px; font-size:10.5px; font-weight:700; cursor:pointer; white-space:nowrap;}
+  .boost-sort button.on{background:linear-gradient(135deg,var(--blue),#f1646b); color:#fff; border-color:transparent;
+    box-shadow:0 5px 12px rgba(201,47,54,.18);}
 
   /* ── 登录保护 ── */
   .auth-gate{position:fixed; inset:0; z-index:120; display:none; align-items:center; justify-content:center; padding:24px;
@@ -327,6 +335,8 @@
     .boost-head h3{padding-top:7px;}
     .boost-seg button{padding:6px 10px;}
     .boost-head + .hint{margin-bottom:8px!important; line-height:1.5;}
+    .boost-sort{margin-bottom:8px; gap:5px;}
+    .boost-sort button{padding:5px 8px; font-size:9.5px;}
   }
 
   @media(min-width:720px){ .modal{align-items:center;} .modal .box{border-radius:24px;} }
@@ -420,6 +430,14 @@
         </div>
       </div>
       <div class="hint" style="margin-bottom:12px">指标均来自 BI 上传（含音频销量）；裸机≥3次标红需提交视频演练。</div>
+      <div class="boost-sort" id="boostSort" aria-label="专项提升排序筛选器">
+        <span class="boost-sort-label">降序排列：</span>
+        <button data-k="yHost" onclick="switchBoostSort('yHost')">昨日主机</button>
+        <button data-k="yPrice" onclick="switchBoostSort('yPrice')">昨日客单价</button>
+        <button class="on" data-k="monthSales" onclick="switchBoostSort('monthSales')">月度销售额</button>
+        <button data-k="monthPrice" onclick="switchBoostSort('monthPrice')">月度客单价</button>
+        <button data-k="audio" onclick="switchBoostSort('audio')">音频销量</button>
+      </div>
       <div class="boost-list" id="boostTable"></div>
     </div>
   </div>
@@ -562,6 +580,7 @@ let biParsed=null;
 let selPersonId=null;
 let exState={combo:false,topSales:false,caseShare:false};
 let curBase=0;
+let boostSort='monthSales';
 
 /* ===================== 工具 ===================== */
 function $(id){return document.getElementById(id);}
@@ -909,10 +928,18 @@ function renderBoost(){
       g.monthHostVol+=Number(p.monthHostVol)||0;g.monthPPAmtEx+=Number(p.monthPPAmtEx)||0;
       g.audioVol+=Number(p.audioVol)||0;g.nakedCount+=Number(p.nakedCount)||0;
     });
-    list=Object.values(grouped).sort((a,b)=>(b.monthPPAmtEx||0)-(a.monthPPAmtEx||0));
+    list=Object.values(grouped);
   }else{
-    list=state.boosts.slice().sort((a,b)=> (b.monthPPAmtEx||0)-(a.monthPPAmtEx||0));
+    list=state.boosts.slice();
   }
+  const sortValue=(p)=>{
+    if(boostSort==='yHost')return Number(p.yHostVol)||0;
+    if(boostSort==='yPrice')return (Number(p.yHostVol)||0)>0?(Number(p.yPPAmtEx)||0)/(Number(p.yHostVol)||1):-Infinity;
+    if(boostSort==='monthPrice')return (Number(p.monthHostVol)||0)>0?(Number(p.monthPPAmtEx)||0)/(Number(p.monthHostVol)||1):-Infinity;
+    if(boostSort==='audio')return Number(p.audioVol)||0;
+    return Number(p.monthPPAmtEx)||0;
+  };
+  list.sort((a,b)=>sortValue(b)-sortValue(a)||String(a.name||'').localeCompare(String(b.name||''),'zh-CN'));
   let html='';
   list.forEach((p,i)=>{
     const rk=i+1; const medal = rk<=3?`<span class="medal m${rk}">${rk}</span>`:`<span class="rk-badge rk-norm">${rk}</span>`;
@@ -942,6 +969,12 @@ function renderBoost(){
 function switchBoostView(view){
   boostView=view==='store'?'store':'person';
   document.querySelectorAll('#boostSeg button').forEach(b=>b.classList.toggle('on',b.dataset.k===boostView));
+  renderBoost();
+}
+function switchBoostSort(key){
+  const allowed=['yHost','yPrice','monthSales','monthPrice','audio'];
+  boostSort=allowed.includes(key)?key:'monthSales';
+  document.querySelectorAll('#boostSort button').forEach(b=>b.classList.toggle('on',b.dataset.k===boostSort));
   renderBoost();
 }
 
