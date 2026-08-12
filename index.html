@@ -514,7 +514,7 @@
   <div class="panel" id="panel-naked">
     <div class="card">
       <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>裸机销售复盘</h3>
-      <div class="hint" style="margin-bottom:10px">判定：<b>前一日主机有成交，但3PP未成交</b>。名单由每次 BI 上传自动生成（当日）。在群内完成复盘后点「已复盘」。</div>
+      <div class="hint" style="margin-bottom:10px">判定：<b>专项提升学员前一日主机增量 &gt; 0，且3PP销售额增量 ≤ 0</b>。必须有相邻两天的累计快照；完成复盘后点「已复盘」。</div>
       <div id="nakedBox"></div>
     </div>
     <div class="card">
@@ -566,7 +566,10 @@
 <div class="modal" id="biModal">
   <div class="box">
     <h3>上传 BI 销售表格 <button class="close" onclick="closeModal('biModal')">×</button></h3>
-    <p class="hint" style="margin-bottom:10px">建议每日导出「<b>8月1日 – 前一日</b>」的累计数据上传。系统自动：①同时更新先锋小队+专项提升；②计算昨日增量；③生成裸机复盘名单。</p>
+    <p class="hint" style="margin-bottom:10px">建议每日导出「<b>8月1日 – 前一日</b>」的累计数据上传。系统会用相邻两天的累计快照计算昨日增量，并按「<b>主机增量 &gt; 0、3PP销售额增量 ≤ 0</b>」筛选专项提升裸机名单。</p>
+    <label style="display:block;margin:0 0 10px;font-size:13px;color:var(--sub)">累计数据截止至（当天 0 点）
+      <input type="date" id="biSnapshotDate" style="display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--text);font:inherit">
+    </label>
     <label class="drop" id="dropLabel">
       📎 选择 BI 表格文件（.xlsx / .csv）
       <input type="file" id="biFile" accept=".xlsx,.csv" style="display:none" onchange="biFilePicked(event)">
@@ -618,7 +621,7 @@ const SYNC_KEY='shared';
 const IS_PREVIEW=new URLSearchParams(location.search).get('preview')==='1';
 const sbClient=(SB_URL&&SB_URL.indexOf('YOUR_')!==0&&SB_KEY&&SB_KEY.indexOf('YOUR_')!==0&&typeof window!=='undefined'&&window.supabase)?window.supabase.createClient(SB_URL,SB_KEY):null;
 function sbReady(){return !!sbClient&&!IS_PREVIEW;}
-function mergeState(o){return Object.assign({pioneers:[],boosts:[],records:[],prevBI:{},nakedToday:[],reviewedToday:[],lastImportDate:''},o||{});}
+function mergeState(o){return Object.assign({pioneers:[],boosts:[],records:[],prevBI:{},biSnapshots:{},nakedHistory:{},nakedToday:[],nakedBusinessDate:'',reviewedToday:[],lastImportDate:''},o||{});}
 let authUser=null;
 let realtimeChannel=null;
 let cloudRefreshBusy=false;
@@ -628,7 +631,7 @@ let inviteIntent=false;
 /* ===================== 状态 ===================== */
 const LS_KEY='wb_3pp_pk_v2';
 const EVENT_END=new Date(2026,7,31); // 8月31日
-let state={pioneers:[],boosts:[],records:[],prevBI:{},nakedToday:[],reviewedToday:[],lastImportDate:''};
+let state={pioneers:[],boosts:[],records:[],prevBI:{},biSnapshots:{},nakedHistory:{},nakedToday:[],nakedBusinessDate:'',reviewedToday:[],lastImportDate:''};
 let pioSort='score';
 let biParsed=null;
 let selPersonId=null;
@@ -650,6 +653,9 @@ function uid(p){return (p||'')+Date.now().toString(36)+Math.floor(Math.random()*
 function r1(n){return Math.round((n||0)*10)/10;}
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function shiftDate(iso,days){const d=new Date((iso||todayStr())+'T12:00:00');d.setDate(d.getDate()+days);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function inferDateFromFilename(name){const m=String(name||'').match(/(20\d{2})[-_年](\d{1,2})[-_月](\d{1,2})/);return m?m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0'):todayStr();}
+function biPersonKey(name,store){return String(name||'').trim().replace(/\s+/g,'')+'|'+String(store||'').trim().replace(/\s+/g,'');}
 function fmt(n){if(n==null||isNaN(n))return '0';return (Math.round(n*100)/100).toLocaleString('zh-CN');}
 function money(n){return '¥'+Math.round(n||0).toLocaleString('zh-CN');}
 function daysLeft(){const t=new Date();t.setHours(0,0,0,0);const e=new Date(EVENT_END);e.setHours(0,0,0,0);return Math.max(0,Math.round((e-t)/86400000));}
@@ -671,7 +677,7 @@ function mkBoost(p){return {id:'B'+uid(),name:p.name,store:p.store||'',camp:'boo
 function seedData(){
   state.pioneers=PRESET_PIONEER.map(mkPioneer);
   state.boosts=PRESET_BOOST.map(mkBoost);
-  state.records=[]; state.prevBI={}; state.nakedToday=[]; state.reviewedToday=[]; state.lastImportDate='';
+  state.records=[]; state.prevBI={}; state.biSnapshots={}; state.nakedHistory={}; state.nakedToday=[]; state.nakedBusinessDate=''; state.reviewedToday=[]; state.lastImportDate='';
 }
 function seedPreviewData(){
   const pioneers=[
@@ -687,7 +693,7 @@ function seedPreviewData(){
   ];
   state.boosts=boosts.map(x=>Object.assign(mkBoost({name:x[0],store:x[1]}),{monthHostVol:x[2],monthPPAmtEx:x[3],monthPPAmt:x[3],audioVol:x[4],nakedCount:x[5],yHostVol:2,yPPAmtEx:Math.round(x[3]/x[2]*2)}));
   state.records=[{id:'demo1',date:todayStr(),name:'示例顾问 A',score:1.2,note:'示例积分记录'}];
-  state.prevBI={};state.nakedToday=[{name:'提升学员 C',camp:'boost'},{name:'提升学员 D',camp:'boost'}];
+  state.prevBI={};state.biSnapshots={};state.nakedHistory={};state.nakedToday=[{name:'提升学员 C',camp:'boost'},{name:'提升学员 D',camp:'boost'}];state.nakedBusinessDate=shiftDate(todayStr(),-1);
   state.reviewedToday=['提升学员 C'];state.lastImportDate=todayStr();
 }
 async function save(){
@@ -1036,7 +1042,7 @@ function switchBoostSort(key){
 function renderNaked(){
   const box=$('nakedBox');
   if(!state.nakedToday.length){
-    box.innerHTML='<div class="hint">暂无裸机名单。上传 BI 表格后，系统会自动筛出「前一日主机有成交、但3PP未成交」的人员。</div>';
+    box.innerHTML='<div class="hint">暂无裸机名单。上传相邻两天的累计 BI 快照后，系统会筛出专项提升中「前一日主机有成交、但3PP销售额未增长」的人员。</div>';
   }else{
     let h='<div class="naked-list">';
     state.nakedToday.forEach(n=>{
@@ -1134,7 +1140,7 @@ async function undoRec(id){
 
 /* ===================== BI 导入 ===================== */
 function openData(){$('dataModal').classList.add('show');}
-function openBI(){biParsed=null;$('biText').value='';$('biFileInfo').innerHTML='';$('biModal').classList.add('show');}
+function openBI(){biParsed=null;$('biText').value='';$('biFileInfo').innerHTML='';$('biSnapshotDate').value=todayStr();$('biModal').classList.add('show');}
 function closeModal(id){$(id).classList.remove('show');}
 
 async function biFilePicked(e){
@@ -1143,70 +1149,95 @@ async function biFilePicked(e){
   try{
     const rows=await parseTableFile(f);
     if(!rows||rows.length<2)throw new Error('表格为空或格式无法识别');
-    const res=computeBI(rows);
-    biParsed={rows, preview:res};
+    const snapshotDate=inferDateFromFilename(f.name);
+    $('biSnapshotDate').value=snapshotDate;
+    const res=computeBI(rows,snapshotDate);
+    biParsed={rows,snapshotDate,preview:res};
     let info=`✅ 已识别 <b>${res.total}</b> 行 ｜ 匹配两个营共 <b>${res.matched}</b> 人 ｜ 未匹配 <b>${res.unmatched.length}</b> 人`;
+    info+='<br>累计截止：<b>'+esc(snapshotDate)+' 0点</b> ｜ 对应复盘日期：<b>'+esc(shiftDate(snapshotDate,-1))+'</b>';
     if(res.unmatched.length)info+='<br><span style="color:#b45309">未匹配：'+esc(res.unmatched.slice(0,12).join('、'))+(res.unmatched.length>12?'…':'')+'</span>';
-    if(res.naked>0)info+='<br><span style="color:#dc2626">⚠️ 本次筛出 <b>'+res.naked+'</b> 位裸机销售（主机成交/3PP未成交）</span>';
+    if(!res.hasPrevious)info+='<br><span style="color:#b45309">⚠️ 缺少 '+esc(shiftDate(snapshotDate,-1))+' 0点的累计快照，本次只更新数据，不生成“前一日”裸机名单。</span>';
+    else if(res.naked>0)info+='<br><span style="color:#dc2626">⚠️ 本次筛出 <b>'+res.naked+'</b> 位专项提升裸机销售（主机成交/3PP销售额未增长）</span>';
     $('biFileInfo').innerHTML=info;
     toast('文件已解析，点「导入更新」生效','ok');
   }catch(err){biParsed=null;$('biFileInfo').innerHTML='<span style="color:#dc2626">解析失败：'+esc(err.message)+'</span>';toast('解析失败：'+err.message,'err');}
 }
 
-function computeBI(rows){
+function getPreviousBISnapshot(snapshotDate){
+  const previousDate=shiftDate(snapshotDate,-1);
+  if(state.biSnapshots&&state.biSnapshots[previousDate])return {date:previousDate,rows:state.biSnapshots[previousDate]};
+  if(state.lastImportDate===previousDate&&state.prevBI&&Object.keys(state.prevBI).length)return {date:previousDate,rows:state.prevBI};
+  return {date:previousDate,rows:null};
+}
+function matchBIPersons(name,store){
+  const exact=all().filter(p=>p.name===name&&(!store||biPersonKey('',p.store)===biPersonKey('',store)));
+  if(exact.length)return exact;
+  const byName=all().filter(p=>p.name===name);
+  return byName.length===1?byName:[];
+}
+function previousBIRecord(previousRows,name,store){return previousRows?(previousRows[biPersonKey(name,store)]||previousRows[name]||null):null;}
+function computeBI(rows,snapshotDate){
+  snapshotDate=snapshotDate||todayStr();
   const hdr=rows[0].map(h=>String(h==null?'':h).trim());
   const nameIdx=hdr.findIndex(h=>h&&(h.includes('姓名')||/^name$/i.test(h)));
   if(nameIdx<0)throw new Error('未找到「姓名」列，请确认表头含"姓名"');
   const idxOf=re=>hdr.findIndex(h=>h&&re.test(h));
-  const hostVolIdx=idxOf(/主机销量/), hostAmtIdx=idxOf(/主机销售金额/),
+  const storeIdx=idxOf(/Name of POS|门店/), hostVolIdx=idxOf(/主机销量/), hostAmtIdx=idxOf(/主机销售金额/),
         ppVolIdx=idxOf(/3PP销量/), ppAmtExIdx=idxOf(/3PP销售额/), djiIdx=idxOf(/大疆销售额/), audioIdx=idxOf(/音频销量/);
   const num=(row,idx)=>{if(idx<0)return 0;const v=parseFloat(String(row[idx]==null?'':row[idx]).replace(/[¥,，\s]/g,''));return isNaN(v)?0:v;};
-  const newSnap={}; const snapRows=[];
+  const newSnap={},newSnapByKey={}; const snapRows=[];
   for(let i=1;i<rows.length;i++){
     const row=rows[i]; const nm=String(row[nameIdx]==null?'':row[nameIdx]).trim(); if(!nm)continue;
+    const store=storeIdx<0?'':String(row[storeIdx]==null?'':row[storeIdx]).trim();
     const rec={hostVol:num(row,hostVolIdx),hostAmt:num(row,hostAmtIdx),ppVol:num(row,ppVolIdx),ppAmtEx:num(row,ppAmtExIdx),djiAmt:num(row,djiIdx),audio:num(row,audioIdx)};
-    newSnap[nm]=rec; snapRows.push({nm,rec});
+    const key=biPersonKey(nm,store);newSnap[nm]=rec;newSnapByKey[key]=rec;snapRows.push({nm,store,key,rec});
   }
-  const prev=state.prevBI||{}; let matched=0; const unmatched=[]; const nakedNames={};
-  snapRows.forEach(({nm,rec})=>{
-    let d; if(prev[nm]){d={hostVol:rec.hostVol-prev[nm].hostVol,ppVol:rec.ppVol-prev[nm].ppVol};}
-    else{d={hostVol:0,ppVol:0};}
-    const persons=all().filter(p=>p.name===nm);
+  const previous=getPreviousBISnapshot(snapshotDate);let matched=0;const unmatched=[];const nakedKeys={};
+  snapRows.forEach(({nm,store,key,rec})=>{
+    const old=previousBIRecord(previous.rows,nm,store);
+    const d=old?{hostVol:rec.hostVol-(old.hostVol||0),ppVol:rec.ppVol-(old.ppVol||0),ppAmt:(rec.ppAmtEx+rec.djiAmt)-((old.ppAmtEx||0)+(old.djiAmt||0))}:{hostVol:0,ppVol:0,ppAmt:0};
+    const persons=matchBIPersons(nm,store);
     if(!persons.length){unmatched.push(nm);}
     matched+=persons.length;
-    if(prev[nm]&&d.hostVol>0&&d.ppVol===0){nakedNames[nm]=(nakedNames[nm]||0)+1;}
+    if(old&&d.hostVol>0&&d.ppAmt<=0&&persons.some(p=>p.camp==='boost'))nakedKeys[key]=1;
   });
-  return {snapRows,newSnap,matched,unmatched,total:snapRows.length,naked:Object.keys(nakedNames).length};
+  return {snapRows,newSnap,newSnapByKey,previousRows:previous.rows,previousDate:previous.date,hasPrevious:!!previous.rows,matched,unmatched,total:snapRows.length,naked:Object.keys(nakedKeys).length};
 }
-function applyBI(rows){
-  const c=computeBI(rows);
-  const prev=state.prevBI||{}; const nakedNew=[];
-  c.snapRows.forEach(({nm,rec})=>{
-    let d; if(prev[nm]){d={hostVol:rec.hostVol-prev[nm].hostVol,hostAmt:rec.hostAmt-prev[nm].hostAmt,ppVol:rec.ppVol-prev[nm].ppVol,ppAmtEx:rec.ppAmtEx-prev[nm].ppAmtEx,djiAmt:rec.djiAmt-prev[nm].djiAmt};}
+function applyBI(rows,snapshotDate){
+  snapshotDate=snapshotDate||todayStr();const c=computeBI(rows,snapshotDate);const nakedNew=[];const newNakedKeys=[];
+  c.snapRows.forEach(({nm,store,key,rec})=>{
+    const old=previousBIRecord(c.previousRows,nm,store);
+    let d; if(old){d={hostVol:rec.hostVol-(old.hostVol||0),hostAmt:rec.hostAmt-(old.hostAmt||0),ppVol:rec.ppVol-(old.ppVol||0),ppAmtEx:rec.ppAmtEx-(old.ppAmtEx||0),djiAmt:rec.djiAmt-(old.djiAmt||0)};}
     else{d={hostVol:0,hostAmt:0,ppVol:0,ppAmtEx:0,djiAmt:0};}
-    all().filter(p=>p.name===nm).forEach(p=>{
+    matchBIPersons(nm,store).forEach(p=>{
       p.monthHostVol=rec.hostVol; p.monthHostAmt=rec.hostAmt;
       p.monthPPVol=rec.ppVol; p.monthPPAmtEx=rec.ppAmtEx; p.monthPPAmt=rec.ppAmtEx+rec.djiAmt;
       p.ppPriceEx=rec.ppVol>0?rec.ppAmtEx/rec.ppVol:0;
       p.audioVol=rec.audio;
       p.yHostVol=d.hostVol; p.yPPVol=d.ppVol; p.yPPAmtEx=d.ppAmtEx;
       if(p.camp==='pioneer'){p.totalSales=p.monthPPAmt;}
-      if(prev[nm]&&d.hostVol>0&&d.ppVol===0){
-        p.nakedCount=(p.nakedCount||0)+1;
-        if(!nakedNew.find(x=>x.name===nm))nakedNew.push({name:nm,camp:p.camp});
+      if(old&&p.camp==='boost'&&d.hostVol>0&&(d.ppAmtEx+d.djiAmt)<=0){
+        const personEventKey=biPersonKey(p.name,p.store);newNakedKeys.push(personEventKey);
+        if(!nakedNew.find(x=>biPersonKey(x.name,x.store)===personEventKey))nakedNew.push({name:nm,store:p.store,camp:p.camp});
       }
     });
   });
-  state.prevBI=c.newSnap; state.lastImportDate=todayStr(); state.nakedToday=nakedNew; state.reviewedToday=[];
-  return {matched:c.matched,unmatched:c.unmatched,total:c.total,naked:nakedNew.length};
+  const businessDate=shiftDate(snapshotDate,-1);state.nakedHistory=state.nakedHistory||{};
+  const oldKeys=new Set(state.nakedHistory[businessDate]||[]),freshKeys=new Set(newNakedKeys);
+  all().filter(p=>p.camp==='boost').forEach(p=>{const k=biPersonKey(p.name,p.store);if(freshKeys.has(k)&&!oldKeys.has(k))p.nakedCount=(p.nakedCount||0)+1;if(oldKeys.has(k)&&!freshKeys.has(k))p.nakedCount=Math.max(0,(p.nakedCount||0)-1);});
+  state.nakedHistory[businessDate]=[...freshKeys];state.biSnapshots=state.biSnapshots||{};state.biSnapshots[snapshotDate]=c.newSnapByKey;
+  Object.keys(state.biSnapshots).sort().slice(0,-7).forEach(d=>delete state.biSnapshots[d]);
+  state.prevBI=c.newSnap;state.lastImportDate=snapshotDate;state.nakedToday=c.hasPrevious?nakedNew:[];state.nakedBusinessDate=c.hasPrevious?businessDate:'';state.reviewedToday=[];
+  return {matched:c.matched,unmatched:c.unmatched,total:c.total,naked:state.nakedToday.length,hasPrevious:c.hasPrevious,previousDate:c.previousDate};
 }
 
 async function doBIImport(){
   if(biParsed&&biParsed.rows){
-    const res=applyBI(biParsed.rows);
+    const snapshotDate=$('biSnapshotDate').value||biParsed.snapshotDate||todayStr();
+    const res=applyBI(biParsed.rows,snapshotDate);
     renderAll();closeModal('biModal');biParsed=null;
     const saved=await save();
-    if(saved)toast('云端保存成功 · 匹配'+res.matched+'人 · 裸机'+res.naked+'人',res.unmatched.length?'':'ok');
+    if(saved)toast('云端保存成功 · 匹配'+res.matched+'人 · 裸机'+res.naked+'人'+(res.hasPrevious?'':' · 缺前一日快照'),res.unmatched.length?'':'ok');
     if(res.unmatched.length)console.warn('BI未匹配：',res.unmatched);
     return;
   }
@@ -1309,7 +1340,7 @@ function importFilePicked(e){
   const f=e.target.files&&e.target.files[0];if(!f)return;
   const rd=new FileReader();
   rd.onload=async()=>{try{const o=JSON.parse(rd.result);if(!o.pioneers)throw new Error('格式不正确');
-    state=Object.assign({pioneers:[],boosts:[],records:[],prevBI:{},nakedToday:[],reviewedToday:[],lastImportDate:''},o);
+    state=Object.assign({pioneers:[],boosts:[],records:[],prevBI:{},biSnapshots:{},nakedHistory:{},nakedToday:[],nakedBusinessDate:'',reviewedToday:[],lastImportDate:''},o);
     renderAll();const saved=await save();if(saved)toast('备份已恢复并保存到云端','ok');}catch(err){toast('恢复失败：'+err.message,'err');}};
   rd.readAsText(f);e.target.value='';
 }
