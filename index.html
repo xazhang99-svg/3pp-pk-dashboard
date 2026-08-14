@@ -467,6 +467,8 @@
         <button class="on" data-k="monthSales" onclick="switchBoostSort('monthSales')">月度销售额</button>
         <button data-k="monthPrice" onclick="switchBoostSort('monthPrice')">月度客单价</button>
         <button data-k="audio" onclick="switchBoostSort('audio')">音频销量</button>
+        <span class="boost-sort-label">筛选：</span>
+        <button id="boostAudioZero" aria-pressed="false" onclick="toggleBoostAudioZero()">音频0销量</button>
       </div>
       <div class="boost-list" id="boostTable"></div>
     </div>
@@ -618,6 +620,7 @@
 const SB_URL='https://tbinpnbpmcyliybknqit.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRiaW5wbmJwbWN5bGl5YmtucWl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYyNjg5MTEsImV4cCI6MjEwMTg0NDkxMX0.SI9FQ91KJ7gfyjss4uMbqqRLTBYMjTYE0gxTq_DgybE';
 const SYNC_KEY='shared';
+const REMOVED_PIONEERS_20260814=['陈颖','赖小银','雷江海'];
 const IS_PREVIEW=new URLSearchParams(location.search).get('preview')==='1';
 const sbClient=(SB_URL&&SB_URL.indexOf('YOUR_')!==0&&SB_KEY&&SB_KEY.indexOf('YOUR_')!==0&&typeof window!=='undefined'&&window.supabase)?window.supabase.createClient(SB_URL,SB_KEY):null;
 function sbReady(){return !!sbClient&&!IS_PREVIEW;}
@@ -638,6 +641,7 @@ let selPersonId=null;
 let exState={combo:false,topSales:false,caseShare:false};
 let curBase=0;
 let boostSort='monthSales';
+let boostAudioZero=false;
 
 /* ===================== 工具 ===================== */
 function $(id){return document.getElementById(id);}
@@ -661,6 +665,25 @@ function money(n){return '¥'+Math.round(n||0).toLocaleString('zh-CN');}
 function daysLeft(){const t=new Date();t.setHours(0,0,0,0);const e=new Date(EVENT_END);e.setHours(0,0,0,0);return Math.max(0,Math.round((e-t)/86400000));}
 function all(){return [...state.pioneers,...state.boosts];}
 function findP(id){return all().find(p=>p.id===id);}
+function applyRosterMigration(s){
+  if(!s)return false;
+  const names=new Set(REMOVED_PIONEERS_20260814),removedIds=new Set((s.pioneers||[]).filter(p=>names.has(p.name)).map(p=>p.id));
+  let changed=removedIds.size>0;
+  s.pioneers=(s.pioneers||[]).filter(p=>!names.has(p.name));
+  const recordCount=(s.records||[]).length;
+  s.records=(s.records||[]).filter(r=>!removedIds.has(r.consultantId)&&!names.has(r.name)&&!names.has(r.consultantName));
+  changed=changed||s.records.length!==recordCount;
+  const nakedCount=(s.nakedToday||[]).length;
+  s.nakedToday=(s.nakedToday||[]).filter(n=>!names.has(n.name));
+  changed=changed||s.nakedToday.length!==nakedCount;
+  const reviewedCount=(s.reviewedToday||[]).length;
+  s.reviewedToday=(s.reviewedToday||[]).filter(name=>!names.has(name));
+  changed=changed||s.reviewedToday.length!==reviewedCount;
+  if(s.prevBI)names.forEach(name=>{if(Object.prototype.hasOwnProperty.call(s.prevBI,name)){delete s.prevBI[name];changed=true;}});
+  if(s.biSnapshots)Object.values(s.biSnapshots).forEach(snapshot=>{if(!snapshot)return;Object.keys(snapshot).forEach(key=>{if(names.has(key)||[...names].some(name=>key.startsWith(name+'|'))){delete snapshot[key];changed=true;}});});
+  s.rosterRemoval20260814=true;
+  return changed;
+}
 let currentTab='pioneer';
 let boostView='person';
 
@@ -703,7 +726,7 @@ async function save(){
   try{localStorage.setItem(LS_KEY,JSON.stringify(state));return true;}
   catch(e){toast('保存失败：'+e.message,'err');return false;}
 }
-function loadLocal(){try{const s=localStorage.getItem(LS_KEY);if(!s)return false;state=mergeState(JSON.parse(s));return true;}catch(e){return false;}}
+function loadLocal(){try{const s=localStorage.getItem(LS_KEY);if(!s)return false;state=mergeState(JSON.parse(s));if(applyRosterMigration(state))localStorage.setItem(LS_KEY,JSON.stringify(state));return true;}catch(e){return false;}}
 async function pushCloud(){
   if(!sbReady()||!authUser)return false;
   try{
@@ -717,7 +740,7 @@ async function loadState(){
     try{
       const {data,error}=await sbClient.from('app_state').select('value').eq('key',SYNC_KEY).maybeSingle();
       if(error)throw error;
-      if(data&&data.value){state=mergeState(data.value);return true;}
+      if(data&&data.value){state=mergeState(data.value);if(applyRosterMigration(state))await pushCloud();return true;}
       state=mergeState();
       return true;
     }catch(e){toast('无法读取云端数据，请确认账号权限','err');return false;}
@@ -992,6 +1015,7 @@ function renderBoost(){
   }else{
     list=state.boosts.slice();
   }
+  if(boostAudioZero)list=list.filter(p=>(Number(p.audioVol)||0)===0);
   const sortValue=(p)=>{
     if(boostSort==='yHost')return Number(p.yHostVol)||0;
     if(boostSort==='yPrice')return (Number(p.yHostVol)||0)>0?(Number(p.yPPAmtEx)||0)/(Number(p.yHostVol)||1):-Infinity;
@@ -1001,6 +1025,7 @@ function renderBoost(){
   };
   list.sort((a,b)=>sortValue(b)-sortValue(a)||String(a.name||'').localeCompare(String(b.name||''),'zh-CN'));
   let html='';
+  if(!list.length){$('boostTable').innerHTML='<div class="hint" style="padding:18px 4px">当前范围内没有音频0销量的数据。</div>';return;}
   list.forEach((p,i)=>{
     const rk=i+1; const medal = rk<=3?`<span class="medal m${rk}">${rk}</span>`:`<span class="rk-badge rk-norm">${rk}</span>`;
     const yPrice = p.yHostVol>0 ? money(p.yPPAmtEx/p.yHostVol) : '—';
@@ -1035,6 +1060,12 @@ function switchBoostSort(key){
   const allowed=['yHost','yPrice','monthSales','monthPrice','audio'];
   boostSort=allowed.includes(key)?key:'monthSales';
   document.querySelectorAll('#boostSort button').forEach(b=>b.classList.toggle('on',b.dataset.k===boostSort));
+  renderBoost();
+}
+function toggleBoostAudioZero(){
+  boostAudioZero=!boostAudioZero;
+  const btn=$('boostAudioZero');
+  if(btn){btn.classList.toggle('on',boostAudioZero);btn.setAttribute('aria-pressed',String(boostAudioZero));}
   renderBoost();
 }
 
@@ -1341,6 +1372,7 @@ function importFilePicked(e){
   const rd=new FileReader();
   rd.onload=async()=>{try{const o=JSON.parse(rd.result);if(!o.pioneers)throw new Error('格式不正确');
     state=Object.assign({pioneers:[],boosts:[],records:[],prevBI:{},biSnapshots:{},nakedHistory:{},nakedToday:[],nakedBusinessDate:'',reviewedToday:[],lastImportDate:''},o);
+    applyRosterMigration(state);
     renderAll();const saved=await save();if(saved)toast('备份已恢复并保存到云端','ok');}catch(err){toast('恢复失败：'+err.message,'err');}};
   rd.readAsText(f);e.target.value='';
 }
