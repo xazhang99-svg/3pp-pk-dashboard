@@ -942,8 +942,9 @@ function renderPioneer(){
     const rk=i+1;
     const isTop3 = rk<=3;
     const badgeCls = rk===1?'rk-gold':rk===2?'rk-silver':rk===3?'rk-bronze':'rk-norm';
-    const pct = targetSales>0 ? Math.min(100, Math.round((p.totalSales||0)/targetSales*100)) : 0;
-    const barCls = pct>=100 ? 'red-done' : 'red';
+    const actualPct = targetSales>0 ? Math.round((p.totalSales||0)/targetSales*100) : 0;
+    const barPct = Math.max(0,Math.min(100,actualPct));
+    const barCls = actualPct>=100 ? 'red-done' : 'red';
     // 销售数据
     const score = fmt(p.totalScore||0);
     const sales = money(p.totalSales||0);
@@ -964,8 +965,8 @@ function renderPioneer(){
       </div>
       <div class="rk-progress">
         <div class="rk-bar-row">
-          <div class="rk-bar"><div class="rk-bar-fill ${barCls}" style="width:${pct}%"></div></div>
-          <span class="rk-pct">${pct}%</span>
+          <div class="rk-bar"><div class="rk-bar-fill ${barCls}" style="width:${barPct}%"></div></div>
+          <span class="rk-pct">${actualPct}%</span>
         </div>
         <div class="rk-checks">距目标 ¥${fmt(targetSales)} · 已达成 ${money(p.totalSales||0)}</div>
       </div>
