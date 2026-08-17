@@ -436,10 +436,16 @@
   <div class="panel active" id="panel-pioneer">
     <div id="pioToday"></div>
     <div class="card">
-      <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>先锋小队 · 积分/销售额排名</h3>
+      <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>先锋小队 · 积分/销售额/客单价排名</h3>
       <div class="seg" id="pioSeg">
         <button class="on" data-k="score" onclick="switchPio('score')">积分排名</button>
         <button data-k="sales" onclick="switchPio('sales')">销售额排名</button>
+        <button data-k="price" onclick="switchPio('price')">客单价排名</button>
+      </div>
+      <div class="boost-sort" style="margin:8px 0 10px" aria-label="先锋PK筛选器">
+        <span class="boost-sort-label">筛选：</span>
+        <button id="pioAudioZero" aria-pressed="false" onclick="togglePioAudioZero()">音频0销量</button>
+        <span class="boost-sort-label">客单价＝含大疆3PP销售额 ÷ 主机销量</span>
       </div>
       <div class="rank-list" id="pioTable"></div>
     </div>
@@ -636,6 +642,7 @@ const LS_KEY='wb_3pp_pk_v2';
 const EVENT_END=new Date(2026,7,31); // 8月31日
 let state={pioneers:[],boosts:[],records:[],prevBI:{},biSnapshots:{},nakedHistory:{},nakedToday:[],nakedBusinessDate:'',reviewedToday:[],lastImportDate:''};
 let pioSort='score';
+let pioAudioZero=false;
 let biParsed=null;
 let selPersonId=null;
 let exState={combo:false,topSales:false,caseShare:false};
@@ -934,10 +941,17 @@ function renderBanner(){
 /* ===================== 渲染：先锋PK（卡片式） ===================== */
 function shortStore(s){return (s||'').replace(/^酷果星创/,'');}
 function renderPioneer(){
-  const list=state.pioneers.slice().sort((a,b)=> pioSort==='score' ? b.totalScore-a.totalScore : b.totalSales-a.totalSales);
-  const maxSales = list.length ? Math.max(...list.map(p=>p.totalSales||0)) : 1;
+  const fullList=state.pioneers.slice();
+  const priceOf=p=>(Number(p.monthHostVol)||0)>0?(Number(p.totalSales)||0)/(Number(p.monthHostVol)||1):-Infinity;
+  fullList.sort((a,b)=>{
+    const av=pioSort==='score'?(Number(a.totalScore)||0):pioSort==='price'?priceOf(a):(Number(a.totalSales)||0);
+    const bv=pioSort==='score'?(Number(b.totalScore)||0):pioSort==='price'?priceOf(b):(Number(b.totalSales)||0);
+    return bv-av||String(a.name||'').localeCompare(String(b.name||''),'zh-CN');
+  });
+  const list=pioAudioZero?fullList.filter(p=>(Number(p.audioVol)||0)===0):fullList;
   const targetSales = 20000; // 个人3PP销售额目标
   let html='';
+  if(!list.length)html='<div class="hint" style="padding:18px 4px">'+(pioAudioZero?'当前范围内没有音频0销量的数据。':'暂无先锋PK人员数据。')+'</div>';
   list.forEach((p,i)=>{
     const rk=i+1;
     const isTop3 = rk<=3;
@@ -950,6 +964,9 @@ function renderPioneer(){
     const sales = money(p.totalSales||0);
     const host = p.monthHostVol||0;
     const audio = p.audioVol||0;
+    const price = host>0 ? money((p.totalSales||0)/host) : '—';
+    const salesOrPrice = pioSort==='price' ? price : sales;
+    const salesOrPriceLabel = pioSort==='price' ? '含大疆客单价' : '销售额';
     // 排名卡片：姓名在上、门店在下
     html+=`<div class="rank-card${isTop3?' rank-top3':''}">
       <div class="rk-badge ${badgeCls}">${rk}</div>
@@ -959,7 +976,7 @@ function renderPioneer(){
       </div>
       <div class="rk-stats">
         <div class="rk-stat"><div class="val rk-val-score">${score}</div><div class="lbl">积分</div></div>
-        <div class="rk-stat"><div class="val rk-val-sales">${sales}</div><div class="lbl">销售额</div></div>
+        <div class="rk-stat"><div class="val rk-val-sales">${salesOrPrice}</div><div class="lbl">${salesOrPriceLabel}</div></div>
         <div class="rk-stat"><div class="val rk-val-host">${host}</div><div class="lbl">主机销量</div></div>
         <div class="rk-stat"><div class="val rk-val-audio">${audio}</div><div class="lbl">音频销量</div></div>
       </div>
@@ -981,7 +998,7 @@ function renderPioneer(){
   if(todayRecs){t+= (t?'<br>':'')+`📝 今日已录 ${todayRecs} 笔积分`;}
   $('pioToday').innerHTML = t?`<div class="today">${t}</div>`:'';
   // 奖项预览
-  renderPrize(list);
+  renderPrize(fullList);
 }
 function renderPrize(list){
   const prize=[
@@ -1436,8 +1453,14 @@ function switchTab(p){
   if(p==='naked')renderNaked();
 }
 function switchPio(k){
-  pioSort=k;
-  document.querySelectorAll('#pioSeg button').forEach(b=>b.classList.toggle('on',b.dataset.k===k));
+  pioSort=['score','sales','price'].includes(k)?k:'score';
+  document.querySelectorAll('#pioSeg button').forEach(b=>b.classList.toggle('on',b.dataset.k===pioSort));
+  renderPioneer();
+}
+function togglePioAudioZero(){
+  pioAudioZero=!pioAudioZero;
+  const btn=$('pioAudioZero');
+  if(btn){btn.classList.toggle('on',pioAudioZero);btn.setAttribute('aria-pressed',String(pioAudioZero));}
   renderPioneer();
 }
 
