@@ -944,9 +944,17 @@ function renderPioneer(){
   const fullList=state.pioneers.slice();
   const priceOf=p=>(Number(p.monthHostVol)||0)>0?(Number(p.totalSales)||0)/(Number(p.monthHostVol)||1):-Infinity;
   fullList.sort((a,b)=>{
-    const av=pioSort==='score'?(Number(a.totalScore)||0):pioSort==='price'?priceOf(a):(Number(a.totalSales)||0);
-    const bv=pioSort==='score'?(Number(b.totalScore)||0):pioSort==='price'?priceOf(b):(Number(b.totalSales)||0);
-    return bv-av||String(a.name||'').localeCompare(String(b.name||''),'zh-CN');
+    const aScore=Number(a.totalScore)||0;
+    const bScore=Number(b.totalScore)||0;
+    const aSales=Number(a.totalSales)||0;
+    const bSales=Number(b.totalSales)||0;
+    if(pioSort==='score'){
+      // 积分相同时必须按3PP销售额降序，姓名仅用于保证完全同分同额时顺序稳定。
+      return bScore-aScore||bSales-aSales||String(a.name||'').localeCompare(String(b.name||''),'zh-CN');
+    }
+    const av=pioSort==='price'?priceOf(a):aSales;
+    const bv=pioSort==='price'?priceOf(b):bSales;
+    return bv-av||bScore-aScore||String(a.name||'').localeCompare(String(b.name||''),'zh-CN');
   });
   const list=pioAudioZero?fullList.filter(p=>(Number(p.audioVol)||0)===0):fullList;
   const targetSales = 20000; // 个人3PP销售额目标
